@@ -32,8 +32,8 @@
 - [x] 2.1.0: results HTML, source-locate, frost/cantTell, serve, presets, `--base-url`/`--routes`, local skills
 - [x] 2.2.0 (never published): doctor, MCP stdio; brief PDF plane
 - [x] 2.3.0: rename to WCAGate (`wcagate` / `wcagate-mcp`); remove PDF/UA plane; results (not dashboard/GUI); MCP compact summary for models
-- [ ] Publish the GitHub repo (`imyourboyroy/WCAGate`) so other computers can `npm install github:imyourboyroy/WCAGate`. No npm registry publish.
-- [ ] Follow-up other repos (after GitHub): thin toolkit submodule/npm dep; pyenv-native; Tailscale_GUI / DNA_Tools
+- [x] Published GitHub repo `ImYourBoyRoy/WCAGate` with tag/release `v2.3.0`. Install: `github:imyourboyroy/WCAGate#v2.3.0`. No npm registry publish.
+- [ ] Follow-up other repos: thin toolkit submodule/npm dep; pyenv-native; Tailscale_GUI / DNA_Tools
 
 ## 5. Architecture Notes
 - Peer deps optional: Playwright, `@axe-core/playwright`, Svelte
@@ -66,9 +66,10 @@
 ## 11. Known Issues / Risks
 - Toolkit `Web_Toolkit/wcag_auditor` 2.0.3 is still a full re-bundle; agents may pick the wrong tree until that follow-up
 - pyenv-native still uses static jsdom axe with contrast off — incomplete vs this Tauri preset
-- Package has no GitHub remote yet until this session publishes `imyourboyroy/WCAGate`. Not published to the npm registry.
+- Not published to the npm registry. GitHub is canonical: https://github.com/ImYourBoyRoy/WCAGate
 
 ## 12. Recent Changes
+- 2026-08-16: Published `ImYourBoyRoy/WCAGate` (`v2.3.0` tag + GitHub Release). Main and tag CI (`npm ci` + `npm run check` on Node 24) succeeded.
 - 2026-08-16: README prompts for coding models (install / install-and-audit / audit-only) plus consumer `package.json` scripts (`wcagate:doctor`, `wcagate:prepare`, `wcagate:audit`, `wcagate:results`)
 - 2026-08-16: README shortened to a human landing page; adapter/suppression detail lives in `docs/ARCHITECTURE.md`
 - 2026-08-16: 2.3.0 — renamed to WCAGate; GitHub-only distribution (`github:imyourboyroy/WCAGate`); no npm registry; removed PDF plane; results HTML; MCP compact summary
@@ -77,7 +78,7 @@
 - 2026-08-04: Extracted standalone package from Portable Web Toolkit vendored copy
 
 ## 13. Validation / Tests Run
-- 2026-08-16: `npm run check` passed on 2.3.0 after WCAGate rename and `@imyourboyroy/wcagate` npm scope (lint 120 files, zero warnings; schema; typecheck; 54 unit tests; CLI; packed install)
+- 2026-08-16: `npm run check` passed locally; GitHub Actions check succeeded on `main` and `v2.3.0` (Node 24, `npm ci`)
 
 ## 14. Next Session Quick Start
 ```bash

@@ -1,0 +1,106 @@
+{
+  "name": "@imyourboyroy/wcagate",
+  "version": "2.3.0",
+  "description": "Evidence-oriented accessibility quality gates for rendered web UI, Svelte, Tauri, Bevy, Godot, and manual review.",
+  "type": "module",
+  "bin": {
+    "wcagate": "./bin/wcagate.mjs",
+    "wcagate-mcp": "./bin/wcagate-mcp.mjs"
+  },
+  "main": "./src/index.mjs",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.mjs"
+    },
+    "./adapters": {
+      "types": "./types/adapters.d.ts",
+      "import": "./src/adapters/index.mjs"
+    },
+    "./reporters": {
+      "types": "./types/reporters.d.ts",
+      "import": "./src/reporters/index.mjs"
+    },
+    "./schema/config": "./src/schemas/config.schema.json",
+    "./schema/run": "./src/schemas/run.schema.json",
+    "./schema/evidence": "./src/schemas/evidence.schema.json",
+    "./schema/native-evidence": "./src/schemas/native-evidence.schema.json"
+  },
+  "files": [
+    "bin",
+    "docs",
+    "examples",
+    "skills",
+    "src",
+    "types",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "MIGRATION.md",
+    "README.md",
+    "SECURITY.md",
+    "START_HERE.md"
+  ],
+  "scripts": {
+    "start": "node ./bin/wcagate.mjs",
+    "audit": "node ./bin/wcagate.mjs run",
+    "lint": "node ./scripts/lint.mjs",
+    "test": "node --unhandled-rejections=strict --throw-deprecation --test --test-reporter=spec ./tests/*.test.mjs",
+    "test:cli": "node ./scripts/test-cli.mjs",
+    "package:check": "node ./scripts/package-check.mjs",
+    "schema:check": "node ./scripts/schema-check.mjs",
+    "typecheck": "tsc -p ./tests/types/tsconfig.json",
+    "check": "npm run lint && npm run schema:check && npm run typecheck && npm run test && npm run test:cli && npm run package:check",
+    "verify": "npm run check"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "wcag",
+    "wcag-2.2",
+    "axe-core",
+    "playwright",
+    "svelte",
+    "astro",
+    "tauri",
+    "bevy",
+    "godot",
+    "wcagate",
+    "mcp",
+    "sarif",
+    "junit"
+  ],
+  "author": "Roy Dawson IV",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "peerDependencies": {
+    "@axe-core/playwright": ">=4.10.0 <5",
+    "playwright": ">=1.50.0 <2",
+    "svelte": ">=5.0.0 <7"
+  },
+  "peerDependenciesMeta": {
+    "@axe-core/playwright": {
+      "optional": true
+    },
+    "playwright": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imyourboyroy/WCAGate.git"
+  },
+  "homepage": "https://github.com/imyourboyroy/WCAGate#readme",
+  "bugs": {
+    "url": "https://github.com/imyourboyroy/WCAGate/issues"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

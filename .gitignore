@@ -1,0 +1,26 @@
+# Dependencies and install artifacts
+node_modules/
+*.tgz
+
+# Audit / build outputs
+.wcag-audit-results/
+wcag-audit/dashboard.html
+wcag-audit/results.html
+wcag-audit/latest.json
+wcag-audit/*.sarif
+wcag-audit/*.xml
+wcag-audit.json
+wcag-audit.sarif
+wcag-audit.junit.xml
+wcag-audit.html
+wcag-audit.md
+coverage/
+dist/
+*.log
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

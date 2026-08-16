@@ -1,0 +1,4 @@
+interface:
+  display_name: "WCAGate native evidence"
+  short_description: "AccessKit / Godot / Tauri evidence export"
+  default_prompt: "Use $wcagate-native to emit native-evidence JSON for this GUI engine, then run wcagate."

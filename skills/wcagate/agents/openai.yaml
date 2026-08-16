@@ -1,0 +1,4 @@
+interface:
+  display_name: "WCAGate"
+  short_description: "Standalone accessibility evidence gate"
+  default_prompt: "Use $wcagate against this project. Run doctor then run, then tell the user the gate and findings. Do not invent WCAG conformance percentages."

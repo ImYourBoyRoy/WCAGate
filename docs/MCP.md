@@ -12,7 +12,7 @@ This package is **one Node evidence engine**. Coding models use the CLI or MCP. 
 
 `wcagate doctor` (and `run`) exit `2` when required tools for the loaded config are missing:
 
-- Node `< 20.11.0`
+- Node `< 24.0.0`
 - Incomplete package checkout
 - `playwright-axe` without Playwright peers / Chromium (`run` can auto-install those npm peers)
 - required `svelte` adapter without `svelte` installed

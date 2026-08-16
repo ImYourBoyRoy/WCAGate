@@ -63,7 +63,7 @@ jobs:
 
 Pin action revisions to immutable commit SHAs when your supply-chain policy requires it.
 
-This package's own check workflow is `.github/workflows/check.yml` (`npm ci` then `npm run check` on Node 24 LTS).
+This package's own check workflow is `.github/workflows/check.yml` (`npm ci` then `npm run check` on Node 24 and Node 26).
 
 ## Baselines
 

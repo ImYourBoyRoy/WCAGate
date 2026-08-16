@@ -30,7 +30,7 @@ await fs.access(path.join(initialized, 'wcagate.config.mjs'));
 await fs.access(path.join(initialized, 'wcag-audit', 'manual-evidence.json'));
 assert.equal((await execute(['validate-config', '--cwd', initialized])).code, 0);
 
-assert.equal((await execute(['version'])).stdout.trim(), '2.3.0');
+assert.equal((await execute(['version'])).stdout.trim(), '2.3.1');
 assert.match((await execute(['help'])).stdout, /Exit codes:/);
 assert.match((await execute(['help'])).stdout, /doctor/);
 const doctor = await execute(['doctor', '--json']);

@@ -9,22 +9,23 @@ import { diagnoseEnvironment, formatDoctorReport, nodeSatisfiesEngines } from '.
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('nodeSatisfiesEngines accepts current LTS-or-newer Node', () => {
-  assert.equal(nodeSatisfiesEngines('20.11.0', '>=20.11.0'), true);
-  assert.equal(nodeSatisfiesEngines('20.10.0', '>=20.11.0'), false);
-  assert.equal(nodeSatisfiesEngines('26.7.0', '>=20.11.0'), true);
+test('nodeSatisfiesEngines accepts Node 24 and newer', () => {
+  assert.equal(nodeSatisfiesEngines('24.0.0', '>=24.0.0'), true);
+  assert.equal(nodeSatisfiesEngines('23.11.0', '>=24.0.0'), false);
+  assert.equal(nodeSatisfiesEngines('24.19.0', '>=24.0.0'), true);
+  assert.equal(nodeSatisfiesEngines('26.7.0', '>=24.0.0'), true);
 });
 
 test('doctor fails closed when this package is missing entrypoints', async () => {
   const fake = await fs.mkdtemp(path.join(os.tmpdir(), 'wcag-doctor-pkg-'));
   await fs.writeFile(path.join(fake, 'package.json'), JSON.stringify({
     name: 'incomplete',
-    engines: { node: '>=20.11.0' }
+    engines: { node: '>=24.0.0' }
   }));
   const diagnosis = await diagnoseEnvironment({
     packageRoot: fake,
     projectRoot: fake,
-    nodeVersion: '22.0.0'
+    nodeVersion: '24.0.0'
   });
   assert.equal(diagnosis.ok, false);
   assert.equal(diagnosis.exitCode, 2);

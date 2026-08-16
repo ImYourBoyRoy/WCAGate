@@ -1,6 +1,6 @@
 # Distribution
 
-This repository is the canonical WCAGate. Other computers get it from **GitHub**, not the npm registry and not by copying a folder off this workstation.
+This repository is the canonical WCAGate. Other computers get it from **GitHub**, not the npm registry and not by copying a folder off this workstation. Requires **Node 24 or newer** (26 is supported).
 
 ## Consume from GitHub
 
@@ -13,7 +13,7 @@ npm run check
 # from a site or app (this is the portable install):
 npm install --save-dev github:imyourboyroy/WCAGate
 # pin a release:
-npm install --save-dev github:imyourboyroy/WCAGate#v2.3.0
+npm install --save-dev github:imyourboyroy/WCAGate#v2.3.1
 npx wcagate init --preset astro
 ```
 

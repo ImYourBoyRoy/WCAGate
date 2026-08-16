@@ -1,6 +1,6 @@
 {
   "name": "@imyourboyroy/wcagate",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Evidence-oriented accessibility quality gates for rendered web UI, Svelte, Tauri, Bevy, Godot, and manual review.",
   "type": "module",
   "bin": {
@@ -74,7 +74,7 @@
   "author": "Roy Dawson IV",
   "license": "MIT",
   "engines": {
-    "node": ">=20.11.0"
+    "node": ">=24.0.0"
   },
   "peerDependencies": {
     "@axe-core/playwright": ">=4.10.0 <5",

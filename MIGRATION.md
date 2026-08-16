@@ -1,5 +1,9 @@
 # Migration
 
+## 2.3.0 → 2.3.1
+
+Require **Node 24 or newer**. Node 20 and 22 are out of support. Node 26 is supported. CI covers 24 and 26.
+
 ## 2.2 → 2.3
 
 Version 2.3 keeps the evidence model and exit codes. Operator-facing defaults change:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.1 — 2026-08-16
+
+- Require **Node 24 or newer** (`engines.node: >=24.0.0`). Node 26 is supported. CI runs the check suite on Node 24 (Active LTS) and Node 26 (Current).
+
 ## 2.3.0 — 2026-08-16
 
 - Renamed the product to **WCAGate**. CLI is `wcagate`, MCP is `wcagate-mcp`, package name is `@imyourboyroy/wcagate`. Config is `wcagate.config.mjs`. Distribute from GitHub (`imyourboyroy/WCAGate`); do not publish to the npm registry.

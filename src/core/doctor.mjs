@@ -24,7 +24,7 @@ function check(id, ok, { required = true, detail = '', fix = '' } = {}) {
 
 export function parseEnginesRange(enginesNode) {
   const match = String(enginesNode || '').match(/>=\s*(\d+)\.(\d+)\.(\d+)/);
-  if (!match) return { major: 20, minor: 11, patch: 0 };
+  if (!match) return { major: 24, minor: 0, patch: 0 };
   return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
 }
 
@@ -69,8 +69,8 @@ export async function diagnoseEnvironment(options = {}) {
   const nodeVersion = options.nodeVersion ?? process.versions.node;
 
   checks.push(check('node-engines', nodeSatisfiesEngines(nodeVersion, packageJson.engines?.node), {
-    detail: `Node ${nodeVersion}; requires ${packageJson.engines?.node ?? '>=20.11.0'}`,
-    fix: 'Install Node.js 20.11.0 or newer (current LTS or later).'
+    detail: `Node ${nodeVersion}; requires ${packageJson.engines?.node ?? '>=24.0.0'}`,
+    fix: 'Install Node.js 24 or newer (Active LTS or Current).'
   }));
 
   const requiredFiles = [

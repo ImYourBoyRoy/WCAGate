@@ -1,6 +1,6 @@
 export const TOOLKIT_NAME = 'WCAGate';
 export const PACKAGE_NAME = '@imyourboyroy/wcagate';
-export const TOOLKIT_VERSION = '2.3.0';
+export const TOOLKIT_VERSION = '2.3.1';
 export const CONFIG_SCHEMA_VERSION = 1;
 export const RUN_SCHEMA_VERSION = '1.0.0';
 export const EVIDENCE_SCHEMA_VERSION = 1;

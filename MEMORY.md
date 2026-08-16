@@ -2,7 +2,7 @@
 
 ## 1. Project Snapshot
 - **Name**: WCAGate (`@imyourboyroy/wcagate`)
-- **Version**: `2.3.0`
+- **Version**: `2.3.1`
 - **Path**: `/home/v1x0r/Desktop/AI/wcag-auditor`
 - **Purpose**: Canonical accessibility evidence gate for web, Astro, Svelte, Tauri, Bevy, and Godot
 - **Split**: This repo owns the engine. Portable Web Toolkit should keep only a thin site-profile bridge (follow-up: toolkit copy is still a re-bundle as of 2.0.3)
@@ -32,7 +32,7 @@
 - [x] 2.1.0: results HTML, source-locate, frost/cantTell, serve, presets, `--base-url`/`--routes`, local skills
 - [x] 2.2.0 (never published): doctor, MCP stdio; brief PDF plane
 - [x] 2.3.0: rename to WCAGate (`wcagate` / `wcagate-mcp`); remove PDF/UA plane; results (not dashboard/GUI); MCP compact summary for models
-- [x] Published GitHub repo `ImYourBoyRoy/WCAGate` with tag/release `v2.3.0`. Install: `github:imyourboyroy/WCAGate#v2.3.0`. No npm registry publish.
+- [x] Published GitHub repo `ImYourBoyRoy/WCAGate`. Current release `v2.3.1` (`github:imyourboyroy/WCAGate#v2.3.1`). No npm registry publish.
 - [ ] Follow-up other repos: thin toolkit submodule/npm dep; pyenv-native; Tailscale_GUI / DNA_Tools
 
 ## 5. Architecture Notes
@@ -55,8 +55,8 @@
 - `doctor` diagnoses only; Playwright auto-install happens on `prepare` / `run`
 
 ## 7. Verified Resources & Versions
-- Node `>=20.11.0` (engines); CI uses **Node 24** Active LTS (verified 2026-08-16: [Node 24.19.0](https://nodejs.org/en/blog/release/v24.19.0)); operator machines often Node 26+
-- Package version `2.3.0`
+- Node `>=24.0.0` (engines). CI matrix: **Node 24** Active LTS and **Node 26** Current (verified 2026-08-16). Operator machines often Node 26+.
+- Package version `2.3.1`
 - TypeScript `6.0.3` (devDependency, checked 2026-08-16)
 - GitHub Actions: `actions/checkout@v7`, `actions/setup-node@v7` (checked 2026-08-16)
 
@@ -69,6 +69,7 @@
 - Not published to the npm registry. GitHub is canonical: https://github.com/ImYourBoyRoy/WCAGate
 
 ## 12. Recent Changes
+- 2026-08-16: 2.3.1 — engines `>=24.0.0`; CI on Node 24 and 26
 - 2026-08-16: Published `ImYourBoyRoy/WCAGate` (`v2.3.0` tag + GitHub Release). Main and tag CI (`npm ci` + `npm run check` on Node 24) succeeded.
 - 2026-08-16: README prompts for coding models (install / install-and-audit / audit-only) plus consumer `package.json` scripts (`wcagate:doctor`, `wcagate:prepare`, `wcagate:audit`, `wcagate:results`)
 - 2026-08-16: README shortened to a human landing page; adapter/suppression detail lives in `docs/ARCHITECTURE.md`

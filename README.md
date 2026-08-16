@@ -11,7 +11,7 @@ npx wcagate doctor
 npx wcagate run --base-url http://127.0.0.1:4321 --routes /
 ```
 
-Not on the npm registry. The install specifier is `github:imyourboyroy/WCAGate` (not `github://`, not `npm install @imyourboyroy/wcagate`). Pin a release with `#v2.3.0`. Details: [Distribution](docs/DISTRIBUTION.md) · [Consumers](docs/CONSUMERS.md).
+Not on the npm registry. Requires **Node 24 or newer** (26 is fine). The install specifier is `github:imyourboyroy/WCAGate` (not `github://`, not `npm install @imyourboyroy/wcagate`). Pin a release with `#v2.3.1`. Details: [Distribution](docs/DISTRIBUTION.md) · [Consumers](docs/CONSUMERS.md).
 
 ## Ask a coding model
 

@@ -9,7 +9,7 @@ GitHub (the portable path; npm still places it at `@imyourboyroy/wcagate`):
 ```bash
 npm install --save-dev github:imyourboyroy/WCAGate
 # pin a release:
-npm install --save-dev github:imyourboyroy/WCAGate#v2.3.0
+npm install --save-dev github:imyourboyroy/WCAGate#v2.3.1
 ```
 
 Sibling checkout:

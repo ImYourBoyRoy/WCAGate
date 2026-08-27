@@ -17,16 +17,21 @@ npm install --save-dev github:imyourboyroy/WCAGate#v2.3.1
 npx wcagate init --preset astro
 ```
 
+npm 12+ defaults `allow-git=none`. GitHub installs need `--allow-git=all` (or `NPM_CONFIG_ALLOW_GIT=all`).
+
 That git install still lands in `node_modules/@imyourboyroy/wcagate` because that is the `name` in `package.json`. Do not run `npm publish`. Do not use `npm install @imyourboyroy/wcagate` — that talks to the npm registry, which this package does not use.
 
 Do not depend on `file:/home/…` except on this machine.
 
-## Later: Portable Web Toolkit (not in this change)
+## Portable Web Toolkit
 
-Do **not** re-vendor adapters into `Web_Toolkit/wcag_auditor`. After this package is on GitHub:
+Do **not** re-vendor adapters into `Web_Toolkit/wcag_auditor`. The toolkit keeps a thin site-profile wrapper and depends on this GitHub repo:
 
-1. Toolkit keeps `--site-profile`, `--from-profile`, Astro ephemeral configs, and `--manage-server`.
-2. Toolkit **depends on this GitHub repo** (`npm install github:imyourboyroy/WCAGate`).
-3. If you choose a submodule and someone clones the toolkit without `--recurse-submodules`, ship a placeholder at `Web_Toolkit/wcag_auditor/core/README.md` that says to run `git submodule update --init` (or a small fetch script). An empty engine that silently passes is forbidden.
+```bash
+cd Web_Toolkit
+npm install --allow-git=all   # package.json: "github:imyourboyroy/WCAGate" (unpinned)
+node ./wcag_auditor/bin/wcag-auditor.mjs core-path
+# → …/Web_Toolkit/node_modules/@imyourboyroy/wcagate
+```
 
-An npm git dependency is simpler than a submodule. Do not implement the bridge until this repo clones cleanly on another computer.
+Missing engine is exit `2`, never a silent pass. Do not use a git submodule. Do not resolve `AI/wcag-auditor`.

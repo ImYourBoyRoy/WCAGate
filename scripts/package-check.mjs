@@ -1,3 +1,10 @@
+// ./scripts/package-check.mjs
+/**
+ * Pack this package and install it into a throwaway consumer to verify the published tarball.
+ * Nested npm must not inherit the parent `npm run` environment (prefix, package, lifecycle).
+ *
+ * Usage: node ./scripts/package-check.mjs
+ */
 import assert from 'node:assert/strict';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -77,14 +84,24 @@ function normalizePackInfo(parsed, packageName) {
   throw new Error(`Unexpected npm pack --json shape: ${JSON.stringify(parsed).slice(0, 200)}`);
 }
 
+function nestedNpmEnv() {
+  const env = { ...process.env, npm_config_loglevel: 'silent' };
+  for (const key of Object.keys(env)) {
+    if (key === 'npm_config_loglevel') continue;
+    if (/^npm_/i.test(key)) delete env[key];
+  }
+  return env;
+}
+
 function execute(command, args, cwd) {
   const result = spawnSync(command, args, {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, npm_config_loglevel: 'silent' }
+    env: nestedNpmEnv()
   });
   if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed with status ${result.status}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+    const spawnError = result.error ? `\nspawn: ${result.error.message}` : '';
+    throw new Error(`${command} ${args.join(' ')} failed with status ${result.status}${spawnError}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
   }
   return result;
 }

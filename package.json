@@ -2,7 +2,6 @@
   "name": "@imyourboyroy/wcagate",
   "version": "2.3.1",
   "description": "Fail-closed WCAG 2.2 accessibility evidence gate for websites, Svelte, Tauri, Bevy, and Godot.",
-
   "type": "module",
   "bin": {
     "wcagate": "./bin/wcagate.mjs",
@@ -61,18 +60,27 @@
     "wcag",
     "wcag-2.2",
     "accessibility-testing",
+    "axe",
     "axe-core",
     "playwright",
     "cli",
     "mcp",
+    "model-context-protocol",
     "github-actions",
+    "ci",
+    "nodejs",
+    "javascript",
     "svelte",
     "astro",
     "tauri",
     "bevy",
-    "godot"
+    "godot",
+    "wcagate"
   ],
-  "author": "Roy Dawson IV",
+  "author": {
+    "name": "Roy Dawson IV",
+    "url": "https://github.com/ImYourBoyRoy"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=24.0.0"

@@ -69,7 +69,7 @@
 - Not published to the npm registry. GitHub is canonical: https://github.com/ImYourBoyRoy/WCAGate
 
 ## 12. Recent Changes
-- 2026-09-21: GitHub topics cover the product (WCAG, axe-core, Playwright, CLI, MCP, CI) and the apps it gates (Svelte, Astro, Tauri, Bevy, Godot).
+- 2026-09-21: GitHub discoverability pass — 20 topics, richer About/README keywords + badges + author, CONTRIBUTING.md, security advisories URL.
 - 2026-08-16: Published `ImYourBoyRoy/WCAGate` (`v2.3.0` tag + GitHub Release). Main and tag CI (`npm ci` + `npm run check` on Node 24) succeeded.
 - 2026-08-16: README prompts for coding models (install / install-and-audit / audit-only) plus consumer `package.json` scripts (`wcagate:doctor`, `wcagate:prepare`, `wcagate:audit`, `wcagate:results`)
 - 2026-08-16: README shortened to a human landing page; adapter/suppression detail lives in `docs/ARCHITECTURE.md`

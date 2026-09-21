@@ -6,7 +6,7 @@ Security fixes are applied to the latest major version.
 
 ## Reporting
 
-Report vulnerabilities privately to the project maintainer. Include the affected version, reproduction steps, impact, and a minimal proof of concept. Do not include private application evidence, authentication material, or customer data in a public issue.
+Report vulnerabilities privately via [GitHub security advisories](https://github.com/ImYourBoyRoy/WCAGate/security/advisories/new). Include the affected version, reproduction steps, impact, and a minimal proof of concept. Do not include private application evidence, authentication material, or customer data in a public issue.
 
 ## Trust boundaries
 

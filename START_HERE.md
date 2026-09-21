@@ -2,7 +2,7 @@
 
 Fail-closed accessibility evidence gate for websites, Svelte, Tauri, Bevy, and Godot. Coding models run it and **tell the user** the result. No GUI. No invented WCAG percentage.
 
-Human landing page: **[README.md](README.md)** (includes three copy-paste prompts for a coding model, plus `package.json` scripts).
+Human landing page: **[README.md](README.md)** (includes three copy-paste prompts for a coding model, plus `package.json` scripts). Maintainer: [Roy Dawson IV](https://github.com/ImYourBoyRoy).
 
 ```bash
 npm install --save-dev github:imyourboyroy/WCAGate

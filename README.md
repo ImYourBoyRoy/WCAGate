@@ -1,8 +1,13 @@
 # WCAGate
 
-A fail-closed **accessibility evidence gate** for websites, Svelte, Tauri, Bevy, and Godot.
+[![CI](https://github.com/ImYourBoyRoy/WCAGate/actions/workflows/check.yml/badge.svg)](https://github.com/ImYourBoyRoy/WCAGate/actions/workflows/check.yml)
+[![Release](https://img.shields.io/github/v/release/ImYourBoyRoy/WCAGate)](https://github.com/ImYourBoyRoy/WCAGate/releases/latest)
+[![Node](https://img.shields.io/badge/node-%3E%3D24-brightgreen)](https://nodejs.org)
+[![License: MIT](https://img.shields.io/github/license/ImYourBoyRoy/WCAGate)](LICENSE)
 
-It does **not** invent a WCAG percentage and does **not** certify conformance. Coding models run it, then **tell you** the gate and the findings. There is no project-picking GUI.
+Fail-closed **WCAG 2.2 AA** accessibility evidence gate — CLI `wcagate`, MCP `wcagate-mcp`, package `@imyourboyroy/wcagate`. Playwright + [axe-core](https://github.com/dequelabs/axe-core) for rendered web, Svelte compiler `a11y_*` diagnostics, native JSON for Tauri / Bevy / Godot. Built for **CI** and **coding agents**.
+
+It does **not** invent a WCAG percentage and does **not** certify conformance.
 
 ```bash
 npm install --save-dev github:imyourboyroy/WCAGate
@@ -11,7 +16,7 @@ npx wcagate doctor
 npx wcagate run --base-url http://127.0.0.1:4321 --routes /
 ```
 
-Not on the npm registry. Requires **Node 24 or newer** (26 is fine). The install specifier is `github:imyourboyroy/WCAGate` (not `github://`, not `npm install @imyourboyroy/wcagate`). Pin a release with `#v2.3.1`. Details: [Distribution](docs/DISTRIBUTION.md) · [Consumers](docs/CONSUMERS.md).
+Not on the npm registry. Requires **Node 24 or newer** (26 is fine). Specifier: `github:imyourboyroy/WCAGate` (not `github://`, not `npm install @imyourboyroy/wcagate`). Pin a release with `#v2.3.1`. Details: [Distribution](docs/DISTRIBUTION.md) · [Consumers](docs/CONSUMERS.md).
 
 ## Ask a coding model
 
@@ -118,11 +123,13 @@ Presets, CI, and consumer wiring: [Consumers](docs/CONSUMERS.md). Native JSON co
 - [Glassmorphism](docs/GLASSMORPHISM.md) — frost UI and `cantTell` contrast
 - [Skills](docs/SKILLS.md) — local agent skills only
 - [Manual testing](docs/MANUAL_TESTING.md) · [Rule authoring](docs/RULE_AUTHORING.md) · [Evidence sources](docs/SOURCE_EVALUATION.md)
-- [Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md)
+- [Contributing](CONTRIBUTING.md) · [Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md)
 - [ADR-001](docs/decisions/ADR-001-canonical-package.md) · [ADR-002](docs/decisions/ADR-002-document-plane.md) (withdrawn) · [ADR-003](docs/decisions/ADR-003-surfaces.md)
 
 `npx wcagate help` lists every command. `npm run check` is the verification suite.
 
 Automated checks find many defects. They cannot prove every process works with assistive technology — that still needs human evidence.
 
-MIT. [github.com/imyourboyroy/WCAGate](https://github.com/imyourboyroy/WCAGate)
+## Author
+
+[Roy Dawson IV](https://github.com/ImYourBoyRoy) · MIT · [github.com/ImYourBoyRoy/WCAGate](https://github.com/ImYourBoyRoy/WCAGate)

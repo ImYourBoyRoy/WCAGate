@@ -33,7 +33,7 @@
 - [x] 2.2.0 (never published): doctor, MCP stdio; brief PDF plane
 - [x] 2.3.0: rename to WCAGate (`wcagate` / `wcagate-mcp`); remove PDF/UA plane; results (not dashboard/GUI); MCP compact summary for models
 - [x] Published GitHub repo `ImYourBoyRoy/WCAGate`. Current release `v2.3.1` (`github:imyourboyroy/WCAGate#v2.3.1`). No npm registry publish.
-- [ ] Follow-up other repos: thin toolkit submodule/npm dep; pyenv-native; Tailscale_GUI / DNA_Tools
+- [x] Follow-up other repos: thin toolkit npm git dep + auto-ensure (not submodule). Prodistry/non-Astro parked.
 
 ## 5. Architecture Notes
 - Peer deps optional: Playwright, `@axe-core/playwright`, Svelte
@@ -69,7 +69,7 @@
 - Not published to the npm registry. GitHub is canonical: https://github.com/ImYourBoyRoy/WCAGate
 
 ## 12. Recent Changes
-- 2026-08-16: 2.3.1 — engines `>=24.0.0`; CI on Node 24 and 26
+- 2026-09-21: GitHub topics retargeted to the product (WCAG/axe/CLI/MCP/CI), not consumer stacks. Description updated for search.
 - 2026-08-16: Published `ImYourBoyRoy/WCAGate` (`v2.3.0` tag + GitHub Release). Main and tag CI (`npm ci` + `npm run check` on Node 24) succeeded.
 - 2026-08-16: README prompts for coding models (install / install-and-audit / audit-only) plus consumer `package.json` scripts (`wcagate:doctor`, `wcagate:prepare`, `wcagate:audit`, `wcagate:results`)
 - 2026-08-16: README shortened to a human landing page; adapter/suppression detail lives in `docs/ARCHITECTURE.md`

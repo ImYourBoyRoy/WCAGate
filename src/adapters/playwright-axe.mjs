@@ -1,3 +1,4 @@
+import os from 'node:os';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { AdapterError } from '../core/errors.mjs';
@@ -6,9 +7,56 @@ import { importOptional } from '../core/dependencies.mjs';
 import { startManagedWebServer } from '../core/web-server.mjs';
 import { axeRemediationWithFrostHint } from '../core/frost-ui.mjs';
 import { axeRunOnlyForProfile, levelFromAxeTag } from '../core/profile.mjs';
+import { resolveContrastFindings } from '../core/contrast-resolver.mjs';
+import { expandScenarioMatrix } from '../core/matrix.mjs';
+import { runReflowProbe, runTextSpacingProbe } from './runtime-probes.mjs';
+import { runFocusIndicatorProbe } from './focus-probe.mjs';
+import { settlePage } from './settle.mjs';
+
+function defaultConcurrency() {
+  return Math.min(4, Math.max(1, (os.availableParallelism?.() ?? 2) - 1));
+}
+
+/** Site-level checks that need more than one page: duplicate titles across distinct routes (WCAG 2.4.2). */
+function crossRouteFindings(scenarioMetadata, adapterName) {
+  const byTitle = new Map();
+  const seenPaths = new Set();
+  for (const meta of scenarioMetadata) {
+    const page = meta.page;
+    if (!page || !page.title || meta.httpStatus >= 400) continue;
+    const base = meta.name.replace(/\s\[[^\]]*\]$/, '');
+    if (seenPaths.has(base)) continue;
+    seenPaths.add(base);
+    const list = byTitle.get(page.title) ?? [];
+    list.push({ scenario: base, path: page.path });
+    byTitle.set(page.title, list);
+  }
+  const findings = [];
+  for (const [title, pages] of byTitle) {
+    if (pages.length < 2) continue;
+    findings.push({
+      ruleId: 'wcagate/site/duplicate-title',
+      title: 'Several pages share the same <title>',
+      description: `${pages.length} routes are titled "${title}": ${pages.map((entry) => entry.path).join(', ')}. Page titles should identify each page (WCAG 2.4.2).`,
+      outcome: 'failed',
+      severity: 'advisory',
+      confidence: 'medium',
+      automation: 'automatic',
+      target: { adapter: adapterName, routeOrScene: pages[0].scenario },
+      standards: [{ document: 'WCAG-2.2', requirement: '2.4.2', level: 'A', mapping: 'secondary' }],
+      evidence: { id: 'duplicate-title', title, routes: pages.map((entry) => entry.path) },
+      remediation: 'Give each page a distinct title that names its topic or purpose (for example "Pricing | Brand" and "About | Brand"). Advisory: it does not block the default gate.',
+      helpUrl: 'https://www.w3.org/WAI/WCAG22/Understanding/page-titled.html',
+      tags: ['site-level', 'titles']
+    });
+  }
+  return findings;
+}
 
 export async function runPlaywrightAxeAdapter(config, context) {
   const managedServer = await startManagedWebServer(config.webServer, context, config.baseURL);
+  // autoPort may have moved the server off a busy port; scenarios then resolve against the origin it really got.
+  const baseURL = managedServer.baseURL ?? config.baseURL;
   try {
     const playwright = context.modules?.playwright
       ?? await importOptional('playwright', 'the rendered browser accessibility adapter', context.importModule);
@@ -27,6 +75,7 @@ export async function runPlaywrightAxeAdapter(config, context) {
     if (!Array.isArray(config.scenarios) || config.scenarios.length === 0) {
       throw new AdapterError('playwright-axe adapter requires at least one scenario');
     }
+    const scenarioList = expandScenarioMatrix(config.scenarios, config.matrix);
 
     const browser = await browserType.launch(config.launchOptions ?? {});
     const browserContext = await browser.newContext({
@@ -38,18 +87,31 @@ export async function runPlaywrightAxeAdapter(config, context) {
     let surfaceCount = 0;
     const scenarios = [];
     try {
-      for (const scenario of config.scenarios) {
-        const result = await runScenario({
-          scenario,
-          config,
-          context,
-          browserContext,
-          AxeBuilder
-        });
+      // Scenarios are independent pages in one browser context; run a few at a time and keep results in config order.
+      const limit = Math.max(1, Math.min(scenarioList.length, config.concurrency ?? defaultConcurrency()));
+      const results = new Array(scenarioList.length);
+      let next = 0;
+      let failure = null;
+      const worker = async () => {
+        while (failure === null) {
+          const index = next;
+          next += 1;
+          if (index >= scenarioList.length) return;
+          try {
+            results[index] = await runScenario({ scenario: scenarioList[index], config, baseURL, context, browserContext, AxeBuilder });
+          } catch (error) {
+            failure = failure ?? error;
+          }
+        }
+      };
+      await Promise.all(Array.from({ length: limit }, worker));
+      if (failure) throw failure;
+      for (const result of results) {
         findings.push(...result.findings);
         surfaceCount += result.surfaceCount;
         scenarios.push(result.metadata);
       }
+      findings.push(...crossRouteFindings(scenarios, context.adapterName));
     } finally {
       try {
         await browserContext.close();
@@ -68,7 +130,7 @@ export async function runPlaywrightAxeAdapter(config, context) {
   }
 }
 
-async function runScenario({ scenario, config, context, browserContext, AxeBuilder }) {
+async function runScenario({ scenario, config, baseURL = config.baseURL, context, browserContext, AxeBuilder }) {
   if (!scenario || typeof scenario !== 'object') throw new AdapterError('Each Playwright scenario must be an object');
   if (typeof scenario.name !== 'string' || scenario.name.trim() === '') throw new AdapterError('Each Playwright scenario requires name');
 
@@ -76,10 +138,28 @@ async function runScenario({ scenario, config, context, browserContext, AxeBuild
   const findings = [];
   const started = Date.now();
   try {
-    const url = scenario.url ?? resolveScenarioUrl(config.baseURL, scenario.path);
-    await page.goto(url, { waitUntil: scenario.waitUntil ?? 'domcontentloaded', timeout: scenario.timeoutMs ?? config.timeoutMs ?? 30_000 });
+    const url = scenario.url ?? resolveScenarioUrl(baseURL, scenario.path);
+    if (scenario.viewport) await page.setViewportSize({ width: scenario.viewport.width, height: scenario.viewport.height });
+    const media = {};
+    if (scenario.colorScheme) media.colorScheme = scenario.colorScheme;
+    if (scenario.reducedMotion) media.reducedMotion = scenario.reducedMotion;
+    if (scenario.forcedColors) media.forcedColors = scenario.forcedColors;
+    if (Object.keys(media).length > 0) await page.emulateMedia(media);
+    const response = await page.goto(url, { waitUntil: scenario.waitUntil ?? 'domcontentloaded', timeout: scenario.timeoutMs ?? config.timeoutMs ?? 30_000 });
+    const status = typeof response?.status === 'function' ? response.status() : null;
+    const expected = [].concat(scenario.expectStatus ?? []);
+    if (status !== null && (expected.length > 0 ? !expected.includes(status) : status >= 400)) {
+      // A 404/500 route would otherwise be audited as if it were the intended page and "pass" on an error screen.
+      findings.push(statusFinding({ status, expected, url, scenarioName: scenario.name, adapterName: context.adapterName }));
+      return {
+        findings,
+        surfaceCount: 1,
+        metadata: { name: scenario.name, url, durationMs: Date.now() - started, httpStatus: status, skipped: 'unexpected-http-status' }
+      };
+    }
     if (typeof scenario.setup === 'function') await scenario.setup(page, context);
     for (const step of scenario.steps ?? []) await executeStep(page, step);
+    const settle = await settlePage(page, scenario.settle ?? config.settle);
 
     let builder = new AxeBuilder({ page });
     const runOnly = scenario.runOnly ?? config.runOnly ?? axeRunOnlyForProfile(context.profile);
@@ -94,7 +174,9 @@ async function runScenario({ scenario, config, context, browserContext, AxeBuild
       scenarioName: scenario.name,
       url
     });
-    findings.push(...axeFindings);
+    const contrastOptions = scenario.probes?.contrastResolution ?? config.probes?.contrastResolution ?? {};
+    const resolution = await resolveContrastFindings({ page, findings: axeFindings, options: contrastOptions });
+    findings.push(...resolution.findings);
     let probeSurface = 0;
     const targetProbe = scenario.probes?.targetSizeEnhanced ?? config.probes?.targetSizeEnhanced;
     if (targetProbe?.enabled) {
@@ -103,9 +185,25 @@ async function runScenario({ scenario, config, context, browserContext, AxeBuild
       probeSurface += probeResult.surfaceCount;
     }
 
+    let focusSummary;
     const focusProbe = scenario.probes?.focusIndicatorReview ?? config.probes?.focusIndicatorReview;
     if (focusProbe?.enabled) {
       const probeResult = await runFocusIndicatorProbe(page, focusProbe, context.adapterName, scenario.name);
+      findings.push(...probeResult.findings);
+      probeSurface += probeResult.surfaceCount;
+      focusSummary = probeResult.summary;
+    }
+
+    const reflowProbe = scenario.probes?.reflow ?? config.probes?.reflow;
+    if (reflowProbe?.enabled) {
+      const probeResult = await runReflowProbe(page, reflowProbe, context.adapterName, scenario.name);
+      findings.push(...probeResult.findings);
+      probeSurface += probeResult.surfaceCount;
+    }
+
+    const spacingProbe = scenario.probes?.textSpacing ?? config.probes?.textSpacing;
+    if (spacingProbe?.enabled) {
+      const probeResult = await runTextSpacingProbe(page, spacingProbe, context.adapterName, scenario.name);
       findings.push(...probeResult.findings);
       probeSurface += probeResult.surfaceCount;
     }
@@ -118,6 +216,13 @@ async function runScenario({ scenario, config, context, browserContext, AxeBuild
         finding.evidence.screenshot = screenshot;
       }
     }
+
+    const pageMeta = await page.evaluate(() => ({
+      title: document.title.replace(/\s+/g, ' ').trim(),
+      lang: document.documentElement.getAttribute('lang') || '',
+      h1: document.querySelectorAll('h1').length,
+      path: location.pathname
+    })).catch(() => null);
 
     const axeSurface = surfaceCountFromAxe(axeResults);
     return {
@@ -133,6 +238,15 @@ async function runScenario({ scenario, config, context, browserContext, AxeBuild
           passes: axeResults.passes?.length ?? 0,
           inapplicable: axeResults.inapplicable?.length ?? 0
         },
+        contrast: resolution.summary.examined > 0
+          ? { ...resolution.summary, resolvedPasses: resolution.passes.slice(0, 50) }
+          : undefined,
+        focus: focusSummary,
+        httpStatus: status,
+        settle,
+        page: pageMeta ?? undefined,
+        colorScheme: scenario.colorScheme,
+        viewport: scenario.viewport,
         screenshot
       }
     };
@@ -145,6 +259,25 @@ async function runScenario({ scenario, config, context, browserContext, AxeBuild
       await page.close();
     }
   }
+}
+
+function statusFinding({ status, expected, url, scenarioName, adapterName }) {
+  return {
+    ruleId: 'wcagate/runtime/http-status',
+    title: `Route returned HTTP ${status}`,
+    description: expected.length > 0
+      ? `${url} returned ${status}; the scenario expects ${expected.join(' or ')}. The error page was not audited as a normal page.`
+      : `${url} returned ${status}. The page was not audited, because auditing an error screen proves nothing about the real page.`,
+    outcome: 'executionError',
+    severity: 'serious',
+    confidence: 'high',
+    automation: 'automatic',
+    target: { adapter: adapterName, routeOrScene: scenarioName, state: url },
+    standards: [{ document: 'INTERNAL', requirement: 'route-reachable', mapping: 'policy' }],
+    evidence: { id: 'http-status', status, expected },
+    remediation: 'Fix the route or the preview server (is the build current and served from the right directory?). To audit an intentional error page, set expectStatus: 404 on that scenario.',
+    tags: ['configuration', 'execution', 'http-status']
+  };
 }
 
 function mapAxeResults(results, target) {
@@ -188,14 +321,25 @@ function mapAxeNode(rule, node, outcome, target) {
       impact: rule.impact ?? node.impact,
       html: node.html,
       failureSummary: node.failureSummary,
-      any: node.any,
-      all: node.all,
-      none: node.none
+      any: compactChecks(node.any),
+      all: compactChecks(node.all),
+      none: compactChecks(node.none)
     },
     remediation: axeRemediationWithFrostHint(rule, node, outcome),
     helpUrl: rule.helpUrl,
     tags: ['axe-core', ...tags, ...frostTags]
   };
+}
+
+/** Keeps what a model needs from an axe check (id, message, measured data) and drops the repeated relatedNodes HTML. */
+function compactChecks(checks) {
+  if (!Array.isArray(checks) || checks.length === 0) return checks;
+  return checks.map((check) => ({
+    id: check.id,
+    message: check.message,
+    data: check.data,
+    related: (check.relatedNodes ?? []).slice(0, 3).map((node) => (Array.isArray(node.target) ? node.target.join(' ') : String(node.html ?? '').slice(0, 80)))
+  }));
 }
 
 function standardsFromAxeTags(tags) {
@@ -307,81 +451,6 @@ async function runTargetSizeProbe(page, options, adapterName, scenarioName) {
     tags: ['geometry', 'runtime-probe', 'target-size']
   }));
   return { findings, surfaceCount: targets.length };
-}
-
-async function runFocusIndicatorProbe(page, options, adapterName, scenarioName) {
-  const maxTabs = positiveInteger(options.maxTabs, 80, 'focusIndicatorReview.maxTabs');
-  const findings = [];
-  const seen = new Set();
-  let surfaceCount = 0;
-
-  for (let index = 0; index < maxTabs; index += 1) {
-    await page.keyboard.press('Tab');
-    const snapshot = await page.evaluate(() => {
-      const element = document.activeElement;
-      if (!element || element === document.body || element === document.documentElement) return null;
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      const visible = rect.width > 0
-        && rect.height > 0
-        && rect.bottom > 0
-        && rect.right > 0
-        && rect.top < innerHeight
-        && rect.left < innerWidth;
-      const outlineWidth = Number.parseFloat(style.outlineWidth) || 0;
-      const obviousIndicator = (outlineWidth > 0 && style.outlineStyle !== 'none' && style.outlineColor !== 'transparent')
-        || (style.boxShadow !== 'none' && style.boxShadow !== '');
-      const selector = element.id
-        ? `#${CSS.escape(element.id)}`
-        : `${element.localName}${element.getAttribute('name') ? `[name="${CSS.escape(element.getAttribute('name'))}"]` : ''}`;
-      return {
-        selector,
-        role: element.getAttribute('role') || element.localName,
-        name: (element.getAttribute('aria-label') || element.textContent || element.getAttribute('name') || '').trim().slice(0, 120),
-        visible,
-        obviousIndicator,
-        outlineStyle: style.outlineStyle,
-        outlineWidth: style.outlineWidth,
-        outlineColor: style.outlineColor,
-        boxShadow: style.boxShadow,
-        rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
-      };
-    });
-
-    if (!snapshot) break;
-    const key = `${snapshot.selector}|${snapshot.name}`;
-    if (seen.has(key)) break;
-    seen.add(key);
-    surfaceCount += 1;
-    if (!snapshot.visible || !snapshot.obviousIndicator) {
-      findings.push({
-        ruleId: 'wcagate/runtime/focus-indicator-review',
-        title: 'Keyboard focus indicator requires manual review',
-        description: snapshot.visible
-          ? 'The runtime probe did not detect an outline or box-shadow focus indicator.'
-          : 'The focused element was not fully visible in the viewport.',
-        outcome: 'cantTell',
-        severity: options.severity ?? 'serious',
-        confidence: 'medium',
-        automation: 'semi-automatic',
-        target: {
-          adapter: adapterName,
-          routeOrScene: scenarioName,
-          selectorOrNode: snapshot.selector
-        },
-        standards: [
-          { document: 'WCAG-2.2', requirement: '2.4.7', level: 'AA', mapping: 'secondary' },
-          { document: 'WCAG-2.2', requirement: '2.4.13', level: 'AAA', mapping: 'secondary' },
-          { document: 'INTERNAL', requirement: 'focus-indicator-review', mapping: 'policy' }
-        ],
-        evidence: snapshot,
-        remediation: 'Inspect the focused state visually and verify visibility, area, and contrast requirements.',
-        helpUrl: 'https://www.w3.org/TR/WCAG22/#focus-visible',
-        tags: ['focus', 'keyboard', 'runtime-probe', 'manual-review']
-      });
-    }
-  }
-  return { findings, surfaceCount };
 }
 
 async function executeStep(page, step) {

@@ -60,7 +60,9 @@ export function defaultProbesForProfile(profileId) {
   const profile = requireProfile(profileId);
   return {
     targetSizeEnhanced: { enabled: profile.level === 'AAA', minimum: 44 },
-    focusIndicatorReview: { enabled: profile.level !== 'A', maxTabs: 80 }
+    focusIndicatorReview: { enabled: profile.level !== 'A', maxTabs: 80 },
+    reflow: { enabled: profile.level !== 'A' },
+    textSpacing: { enabled: profile.level !== 'A' }
   };
 }
 

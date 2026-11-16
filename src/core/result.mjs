@@ -6,6 +6,7 @@ import {
 } from './constants.mjs';
 import { stableHash } from './hash.mjs';
 import { toJsonSafe } from './json.mjs';
+import { agentSummary } from '../reporters/agent.mjs';
 
 export function normalizeFinding(input, context) {
   const target = {
@@ -76,44 +77,22 @@ export function summarizeFindings(findings) {
   };
 }
 
-function compactFindingForAgent(finding) {
-  const file = finding.target?.file;
-  const line = finding.target?.line;
-  return {
-    ruleId: finding.ruleId,
-    title: finding.title,
-    outcome: finding.outcome,
-    severity: finding.severity,
-    file: file || undefined,
-    line: line || undefined,
-    location: file ? `${file}${line ? `:${line}` : ''}` : (finding.target?.selectorOrNode || finding.target?.routeOrScene || undefined),
-    remediation: finding.remediation || undefined
-  };
-}
-
 /**
- * Compact gate + findings for coding models to present to the user.
- * Not a conformance score. Cap lists so chat stays readable.
+ * Compact gate + root-cause groups for coding models (the MCP `run` result). Same content as agent.md: one entry per
+ * cause with its fix and a bounded element list, never one row per finding. Not a conformance score.
  */
-export function summarizeForAgent(run, { limit = 15 } = {}) {
-  const findings = (run.findings ?? []).filter((finding) => !finding.suppressed && !finding.outOfScope);
-  const blocking = findings.filter((finding) => finding.outcome === 'failed' || finding.outcome === 'executionError');
-  const unresolved = findings.filter((finding) => finding.outcome === 'cantTell' || finding.outcome === 'untested');
+export function summarizeForAgent(run, options = {}) {
+  const view = agentSummary(run, options.limit ? { maxGroups: options.limit } : {});
   return {
+    ...view,
     exitCode: run.gate?.exitCode,
     reason: run.gate?.reason,
     passed: Boolean(run.gate?.passed),
     profile: run.profile,
     surfaceCount: run.surfaceCount,
-    summary: run.summary,
-    scorecard: run.scorecard,
     outputDirectory: run.outputDirectory,
     reportFiles: run.reportFiles,
-    blocking: blocking.slice(0, limit).map(compactFindingForAgent),
-    blockingOmitted: Math.max(0, blocking.length - limit),
-    unresolved: unresolved.slice(0, limit).map(compactFindingForAgent),
-    unresolvedOmitted: Math.max(0, unresolved.length - limit),
-    tellTheUser: 'State the gate (exit code and reason), then list blocking and unresolved findings with file:line when present. Fix those next. Do not invent a WCAG percentage or certification.'
+    tellTheUser: 'State the gate (exit code and reason), then each cause with its fix and where it occurs. For one cause use wcagate report --group <id>. Do not invent a WCAG percentage or certification.'
   };
 }
 

@@ -10,11 +10,11 @@ WCAGate is a fail-closed WCAG 2.2 accessibility **evidence gate**. Pull requests
 ```bash
 git clone https://github.com/ImYourBoyRoy/WCAGate.git
 cd WCAGate
-npm ci
-npm run check
+pnpm install --frozen-lockfile
+pnpm run check
 ```
 
-`npm run check` is lint, schema, types, unit tests, CLI smoke, and packed-install verification.
+`pnpm run check` is lint, schema, types, unit tests, CLI smoke, and packed-install verification.
 
 ## Scope
 
@@ -25,4 +25,4 @@ npm run check
 
 ## Pull requests
 
-Open PRs against `main`. Include the `npm run check` outcome. Do not publish to the npm registry.
+Open PRs against `main`. Include the `pnpm run check` outcome. Do not publish to the npm registry.

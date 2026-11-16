@@ -163,6 +163,9 @@
           },
           "outOfScope": {
             "type": "boolean"
+          },
+          "baselined": {
+            "type": "boolean"
           }
         },
         "additionalProperties": true
@@ -197,6 +200,10 @@
     },
     "metadata": {
       "type": "object"
+    },
+    "baseline": {
+      "type": "object",
+      "description": "Comparison with a baseline file when the run used --baseline: known, new, and fixed counts."
     },
     "reportFiles": {
       "type": "array",

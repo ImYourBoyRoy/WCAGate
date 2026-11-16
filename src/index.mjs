@@ -31,10 +31,18 @@ export { getBuiltinRules, findBuiltinRule } from './core/rules.mjs';
 export { runAccessibility } from './core/runner.mjs';
 export { applySuppressions, validateSuppression } from './core/suppressions.mjs';
 export { startDashboardServer, startResultsServer, formatDashboardOpenLine, formatResultsOpenLine, shouldServeDashboard, shouldServeResults } from './core/serve.mjs';
-export { applyRunOverrides, configUsesPlaywright } from './core/run-overrides.mjs';
+export { applyRunOverrides, configUsesPlaywright, firstBaseUrl } from './core/run-overrides.mjs';
+export { applyBaseline, baselineKey, compareWithPrevious, createBaseline, readBaseline, readPreviousRun, writeBaseline } from './core/baseline.mjs';
+export { agentSummary, groupDetail } from './reporters/agent.mjs';
+export { groupFindings } from './core/grouping.mjs';
+export { routesFromSitemap } from './core/sitemap.mjs';
+export { expandScenarioMatrix, VIEWPORT_PRESETS } from './core/matrix.mjs';
+export { classifyContrast, contrastRatio, requiredRatio, suggestForeground } from './core/contrast.mjs';
+export { resolveContrastFindings } from './core/contrast-resolver.mjs';
 export { diagnoseEnvironment, formatDoctorReport } from './core/doctor.mjs';
 export { getBuiltinAdapters } from './adapters/index.mjs';
 export {
+  renderAgentReport,
   renderDashboardReport,
   renderResultsReport,
   renderHtmlReport,

@@ -4,7 +4,7 @@ Glass, frosted panels, and translucent overlays are **supported**. The auditor m
 
 ## What axe does
 
-On `backdrop-filter`, translucent `rgba`/`hsla`, gradients, and busy image backgrounds, axe-core often returns **color-contrast incomplete**. This package maps that to outcome **`cantTell`**.
+On `backdrop-filter`, translucent `rgba`/`hsla`, gradients, and busy image backgrounds, axe-core often returns **color-contrast incomplete**. Since 2.4.0 the engine first **measures those nodes from rendered pixels** ([Contrast resolution](CONTRAST.md)): glass that passes disappears from the findings and glass that fails becomes a real `failed` finding with a suggested fix. Only text it cannot measure still maps to outcome **`cantTell`**.
 
 That is **unresolved evidence** (exit `3` when `gate.unresolvedEvidence` is `error`) — **not** an automatic fail and **not** a request to remove frost UI.
 

@@ -1,0 +1,3 @@
+# pnpm 12 reads project settings here. WCAGate has no dependencies with install scripts; peers (playwright, axe, svelte) are
+# installed automatically for development and tests.
+autoInstallPeers: true

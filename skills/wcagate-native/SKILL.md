@@ -28,12 +28,12 @@ Outcomes: `passed`, `failed`, `inapplicable`, `cantTell`, `untested`, `execution
 ## Commands
 
 ```bash
-npx wcagate init --preset native
-npx wcagate init --preset tauri
-npx wcagate run
+pnpm exec wcagate init --preset native
+pnpm exec wcagate init --preset tauri
+pnpm exec wcagate run
 ```
 
-Open `wcag-audit/latest.json` or the CLI output and tell the user the gate. Optional HTML: `npx wcagate serve` → `http://127.0.0.1:4179/results.html`. Do not open the `.html` file as text. Do not claim WCAG certification.
+Read the CLI output (or `wcag-audit/agent.md`; grouped by root cause) and tell the user the gate. Use `wcagate report --group <id>` for detail; do not read `latest.json` whole. Optional HTML: `pnpm exec wcagate serve` → `http://127.0.0.1:4179/results.html`. Do not open the `.html` file as text. Do not claim WCAG certification.
 
 ## Fail closed
 

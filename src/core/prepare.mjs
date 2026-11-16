@@ -6,6 +6,7 @@
  * `run --ensure-playwright`.
  */
 
+import { addDevArgs, detectPackageManager, execArgs, installFix, managerCommand } from './package-manager.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -16,9 +17,8 @@ function packageExists(projectRoot, name) {
   return fs.existsSync(path.join(projectRoot, 'node_modules', name, 'package.json'));
 }
 
-function runNpm(projectRoot, args, { inherit = true } = {}) {
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  return spawnSync(npmCmd, args, {
+function runManager(manager, projectRoot, args, { inherit = true } = {}) {
+  return spawnSync(managerCommand(manager), args, {
     cwd: projectRoot,
     stdio: inherit ? 'inherit' : 'pipe',
     shell: process.platform === 'win32',
@@ -62,6 +62,7 @@ export async function ensurePlaywrightReady({
     };
   }
 
+  const manager = detectPackageManager(root);
   const missing = [];
   if (!packageExists(root, 'playwright')) missing.push('playwright');
   if (!packageExists(root, '@axe-core/playwright')) missing.push('@axe-core/playwright');
@@ -72,13 +73,14 @@ export async function ensurePlaywrightReady({
         ok: false,
         actions,
         warnings: [
-          `Missing npm peers in client project: ${missing.join(', ')}.`,
-          `Run: npm install --save-dev ${missing.join(' ')} && npx playwright install ${browser}`
+          `Missing peers in client project: ${missing.join(', ')}.`,
+          `Run: ${installFix(manager, missing, browser)}`
         ]
       };
     }
-    const install = runNpm(root, ['install', '--save-dev', ...missing]);
-    actions.push(`npm install --save-dev ${missing.join(' ')}`);
+    const addArgs = addDevArgs(manager, missing);
+    const install = runManager(manager, root, addArgs);
+    actions.push([manager, ...addArgs].join(' '));
     if (install.status !== 0) {
       return {
         ok: false,
@@ -96,18 +98,18 @@ export async function ensurePlaywrightReady({
         actions,
         warnings: [
           `Playwright ${browser} browser binary missing or broken.`,
-          `Run from the client project: npx playwright install ${browser}`
+          `Run from the client project: ${execArgs(manager, 'playwright', ['install', browser]).flat().join(' ')}`
         ]
       };
     }
-    const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-    const browserInstall = spawnSync(npxCmd, ['playwright', 'install', browser], {
+    const [installBin, installArgs] = execArgs(manager, 'playwright', ['install', browser]);
+    const browserInstall = spawnSync(installBin, installArgs, {
       cwd: root,
       stdio: 'inherit',
       shell: process.platform === 'win32',
       env: process.env
     });
-    actions.push(`npx playwright install ${browser}`);
+    actions.push([installBin, ...installArgs].join(' '));
     if (browserInstall.status !== 0) {
       return {
         ok: false,

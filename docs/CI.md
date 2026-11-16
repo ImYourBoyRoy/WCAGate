@@ -8,13 +8,13 @@ Do not collapse all nonzero outcomes into a generic failure message. Preserve th
 - `2`: test system did not produce trustworthy evidence
 - `3`: required human or inconclusive evidence remains unresolved
 
-Do not start `wcagate serve`, `run --serve`, or `npm run wcagate:results` in CI (`CI=true` already disables the viewer). Upload `wcag-audit/latest.json` and `wcag-audit/results.html` as artifacts. Consumer projects should define the scripts in [CONSUMERS.md](CONSUMERS.md).
+Do not start `wcagate serve`, `run --serve`, or `pnpm run wcagate:results` in CI (`CI=true` already disables the viewer). Upload `wcag-audit/latest.json` and `wcag-audit/results.html` as artifacts. Consumer projects should define the scripts in [CONSUMERS.md](CONSUMERS.md).
 
 ## Generic shell
 
 ```bash
 set +e
-npm run wcagate:audit -- --no-color
+pnpm run wcagate:audit --no-color
 code=$?
 set -e
 
@@ -46,12 +46,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run build
-      - run: npm run preview -- --host 127.0.0.1 &
-      - run: npm run wcagate:audit -- --no-color
+      - run: npm install --global pnpm   # npm ships with Node; no pnpm version is pinned
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run build
+      - run: pnpm run preview --host 127.0.0.1 &
+      - run: pnpm run wcagate:audit --no-color
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -63,7 +63,7 @@ jobs:
 
 Pin action revisions to immutable commit SHAs when your supply-chain policy requires it.
 
-This package's own check workflow is `.github/workflows/check.yml` (`npm ci` then `npm run check` on Node 24 and Node 26).
+This package's own check workflow is `.github/workflows/check.yml` (`pnpm install --frozen-lockfile` then `pnpm run check` on Node 24 and Node 26).
 
 ## Baselines
 

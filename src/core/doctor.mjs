@@ -8,6 +8,7 @@
  * Usage: wcagate doctor [--config file] [--cwd directory] [--json]
  */
 
+import { addDevArgs, detectPackageManager, installFix } from './package-manager.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -83,7 +84,7 @@ export async function diagnoseEnvironment(options = {}) {
   const missingPackageFiles = requiredFiles.filter((relative) => !fs.existsSync(path.join(packageRoot, relative)));
   checks.push(check('package-files', missingPackageFiles.length === 0, {
     detail: missingPackageFiles.length === 0 ? 'package entrypoints present' : `missing ${missingPackageFiles.join(', ')}`,
-    fix: 'Reinstall from GitHub (`npm install github:imyourboyroy/WCAGate`) or a complete checkout. Do not copy a partial src/ tree.'
+    fix: 'Reinstall from GitHub (`pnpm add -D github:imyourboyroy/WCAGate`, or `npm install github:imyourboyroy/WCAGate`) or a complete checkout. Do not copy a partial src/ tree.'
   }));
 
   const adapters = options.config?.adapters ?? [];
@@ -94,7 +95,7 @@ export async function diagnoseEnvironment(options = {}) {
     });
     checks.push(check('playwright-axe', ready.ok, {
       detail: ready.ok ? 'Playwright + axe peers and Chromium are ready' : ready.warnings.join(' '),
-      fix: 'From the consumer project: npm install --save-dev playwright @axe-core/playwright && npx playwright install chromium'
+      fix: `From the consumer project: ${installFix(detectPackageManager(projectRoot), ['playwright', '@axe-core/playwright'])}`
     }));
   }
 
@@ -102,7 +103,7 @@ export async function diagnoseEnvironment(options = {}) {
     const svelteOk = packageExists(projectRoot, 'svelte');
     checks.push(check('svelte', svelteOk, {
       detail: svelteOk ? 'svelte is installed in the consumer project' : 'required svelte adapter but svelte is not installed',
-      fix: 'npm install --save-dev svelte'
+      fix: `${detectPackageManager(projectRoot)} ${addDevArgs(detectPackageManager(projectRoot), ['svelte']).join(' ')}`
     }));
   }
 

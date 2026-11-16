@@ -119,10 +119,14 @@ test('Playwright adapter maps axe violations, incomplete checks, and runtime pro
       if (source.includes('document.querySelectorAll')) {
         return [{ selector: '#small', width: 20, height: 20, belowMinimum: true, text: 'Small' }];
       }
-      focusCalls += 1;
-      return focusCalls === 1
-        ? { selector: '#button', role: 'button', name: 'Button', visible: true, obviousIndicator: false, outlineStyle: 'none', outlineWidth: '0px', outlineColor: 'transparent', boxShadow: 'none', rect: { x: 0, y: 0, width: 44, height: 44 } }
-        : null;
+      if (source.includes('elementFromPoint')) return null;
+      if (source.includes('cssPath') && source.includes('activeElement')) {
+        focusCalls += 1;
+        return focusCalls === 1
+          ? { selector: '#button', role: 'button', name: 'Button', visible: true, outline: {}, boxShadow: 'none', heuristicIndicator: false, rect: { x: 10, y: 10, width: 44, height: 44 }, viewport: { width: 800, height: 600 } }
+          : null;
+      }
+      return undefined;
     }
   };
   const fakeContext = { newPage: async () => fakePage, close: async () => {} };
@@ -161,7 +165,8 @@ test('Playwright adapter maps axe violations, incomplete checks, and runtime pro
     scenarios: [{ name: 'home', path: '/', steps: [] }],
     probes: {
       targetSizeEnhanced: { enabled: true, minimum: 44 },
-      focusIndicatorReview: { enabled: true, maxTabs: 2 }
+      focusIndicatorReview: { enabled: true, maxTabs: 2 },
+      contrastResolution: { enabled: false }
     }
   }, context('/tmp', { modules: { playwright, axePlaywright: { AxeBuilder } } }));
   assert.ok(result.findings.some((finding) => finding.ruleId === 'axe/button-name' && finding.outcome === 'failed'));
@@ -169,7 +174,10 @@ test('Playwright adapter maps axe violations, incomplete checks, and runtime pro
   const contrast = result.findings.find((finding) => finding.ruleId === 'axe/color-contrast');
   assert.ok(contrast.tags.includes('frost-ui-review'));
   assert.ok(result.findings.some((finding) => finding.ruleId === 'wcagate/runtime/target-size-enhanced'));
-  assert.ok(result.findings.some((finding) => finding.ruleId === 'wcagate/runtime/focus-indicator-review'));
+  // The fake page cannot capture pixels, so the focus probe must degrade to unresolved evidence, never a pass.
+  const focus = result.findings.find((finding) => finding.ruleId === 'wcagate/runtime/focus-indicator-review');
+  assert.ok(focus);
+  assert.equal(focus.outcome, 'cantTell');
   assert.ok(result.surfaceCount >= 4);
 });
 

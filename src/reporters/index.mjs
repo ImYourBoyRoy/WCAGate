@@ -5,12 +5,14 @@ import { ReporterError } from '../core/errors.mjs';
 import { writeConsoleReport } from './console.mjs';
 import { renderDashboardReport, renderResultsReport } from './dashboard.mjs';
 import { renderHtmlReport } from './html.mjs';
+import { renderAgentReport } from './agent.mjs';
 import { renderJsonReport } from './json.mjs';
 import { renderJunitReport } from './junit.mjs';
 import { renderMarkdownReport } from './markdown.mjs';
 import { renderSarifReport } from './sarif.mjs';
 
 const RENDERERS = Object.freeze({
+  agent: renderAgentReport,
   dashboard: renderDashboardReport,
   results: renderResultsReport,
   html: renderHtmlReport,
@@ -42,12 +44,14 @@ export async function runReporters(run, reporterConfigs, context = {}) {
     await atomicWriteFile(entry.file, content);
   }
   if (!context.quiet && reporterConfigs.some((entry) => entry.type === 'console')) {
-    writeConsoleReport(run, { color: context.color, stream: context.stream });
+    const consoleConfig = reporterConfigs.find((entry) => entry.type === 'console');
+    writeConsoleReport(run, { color: context.color, stream: context.stream, style: context.consoleStyle ?? consoleConfig?.options?.style });
   }
   return reportFiles;
 }
 
 export {
+  renderAgentReport,
   renderDashboardReport,
   renderResultsReport,
   renderHtmlReport,

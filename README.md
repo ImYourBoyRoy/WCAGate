@@ -10,13 +10,13 @@ Fail-closed **WCAG 2.2 AA** accessibility evidence gate — CLI `wcagate`, MCP `
 It does **not** invent a WCAG percentage and does **not** certify conformance.
 
 ```bash
-npm install --save-dev github:imyourboyroy/WCAGate
-npx wcagate init --preset astro    # or web | static | tauri | native
-npx wcagate doctor
-npx wcagate run --base-url http://127.0.0.1:4321 --routes /
+pnpm add -D github:imyourboyroy/WCAGate
+pnpm exec wcagate init --preset astro    # or web | static | tauri | native
+pnpm exec wcagate doctor
+pnpm exec wcagate run --base-url http://127.0.0.1:4321 --routes /
 ```
 
-Not on the npm registry. Requires **Node 24 or newer** (26 is fine). Specifier: `github:imyourboyroy/WCAGate` (not `github://`, not `npm install @imyourboyroy/wcagate`). Pin a release with `#v2.3.1`. Details: [Distribution](docs/DISTRIBUTION.md) · [Consumers](docs/CONSUMERS.md).
+pnpm is the package manager used here and in the examples; npm works too (`npm install --save-dev github:imyourboyroy/WCAGate --allow-git=all`, `npx wcagate`). Not on the npm registry. Requires **Node 24 or newer** (26 is fine). Specifier: `github:imyourboyroy/WCAGate` (not `github://`, not `npm install @imyourboyroy/wcagate`). Use a semver range, not a pinned version, to always get the latest release: `github:imyourboyroy/WCAGate#semver:*` (or `#semver:^2` to stay on a major). Details: [Distribution](docs/DISTRIBUTION.md) · [Consumers](docs/CONSUMERS.md).
 
 ## Ask a coding model
 
@@ -27,7 +27,7 @@ Paste one of these into the project chat.
 ```text
 Install WCAGate in this project from GitHub, not the npm registry.
 
-npm install --save-dev github:imyourboyroy/WCAGate
+pnpm add -D github:imyourboyroy/WCAGate
 
 Add these scripts to package.json:
   "wcagate:doctor": "wcagate doctor",
@@ -38,7 +38,7 @@ Add these scripts to package.json:
 If this is an Astro site, set wcagate:audit to:
   "wcagate run --base-url http://127.0.0.1:4321 --routes /"
 
-If there is no wcagate.config.mjs, run npx wcagate init --preset matching this repo (astro, web, static, tauri, or native). Do not overwrite an existing config unless I ask. Then: npx wcagate skills link --project .
+If there is no wcagate.config.mjs, run pnpm exec wcagate init --preset matching this repo (astro, web, static, tauri, or native). Do not overwrite an existing config unless I ask. Then: pnpm exec wcagate skills link --project .
 
 Do not run npm install @imyourboyroy/wcagate. Do not invent a WCAG percentage.
 ```
@@ -48,13 +48,13 @@ Do not run npm install @imyourboyroy/wcagate. Do not invent a WCAG percentage.
 ```text
 Install WCAGate from GitHub and run an accessibility evidence gate on this project.
 
-1. npm install --save-dev github:imyourboyroy/WCAGate
+1. pnpm add -D github:imyourboyroy/WCAGate
 2. Add package.json scripts wcagate:doctor, wcagate:prepare, wcagate:audit, and wcagate:results (wcagate doctor / prepare / run / serve). For a live site preview, put --base-url and --routes on wcagate:audit.
-3. If wcagate.config.mjs is missing, npx wcagate init --preset matching this stack.
-4. npm run wcagate:doctor — fix missing tools. npm run wcagate:prepare if Playwright is needed.
-5. Start the project's preview if the audit needs a live URL, then npm run wcagate:audit.
+3. If wcagate.config.mjs is missing, pnpm exec wcagate init --preset matching this stack.
+4. pnpm run wcagate:doctor — fix missing tools. pnpm run wcagate:prepare if Playwright is needed.
+5. Start the project's preview if the audit needs a live URL, then pnpm run wcagate:audit.
 6. Tell me the gate: exit 0 pass, 1 blocking, 2 execution/config, 3 unresolved — and each blocking or unresolved finding with file:line. Do not invent a WCAG percentage or certification.
-7. Optional: npm run wcagate:results and give me http://127.0.0.1:4179/results.html. Do not open results.html as a text file.
+7. Optional: pnpm run wcagate:results and give me http://127.0.0.1:4179/results.html. Do not open results.html as a text file.
 ```
 
 **3. Audit (already installed)**
@@ -62,10 +62,10 @@ Install WCAGate from GitHub and run an accessibility evidence gate on this proje
 ```text
 WCAGate is already a dependency. Run the accessibility evidence gate on this project.
 
-1. npm run wcagate:doctor (or npx wcagate doctor). Fix missing tools first.
-2. npm run wcagate:audit — or npx wcagate run --base-url <preview-url> --routes / if a live URL is required.
+1. pnpm run wcagate:doctor (or pnpm exec wcagate doctor). Fix missing tools first.
+2. pnpm run wcagate:audit — or pnpm exec wcagate run --base-url <preview-url> --routes / if a live URL is required.
 3. Tell me the gate (exit 0 pass, 1 blocking, 2 execution/config, 3 unresolved) and each blocking or unresolved finding with file:line. Do not invent a WCAG percentage or certification.
-4. Optional HTML: npm run wcagate:results → http://127.0.0.1:4179/results.html. Do not open the HTML as text.
+4. Optional HTML: pnpm run wcagate:results → http://127.0.0.1:4179/results.html. Do not open the HTML as text.
 ```
 
 ## In your package.json
@@ -95,9 +95,9 @@ WCAGate is already a dependency. Run the accessibility evidence gate on this pro
 | `2` | Config, missing tools, or empty surface — not a silent pass |
 | `3` | Evidence still untested or inconclusive |
 
-Each run overwrites `wcag-audit/latest.json` and `wcag-audit/results.html`. Default target is WCAG 2.2 AA. Optional HTML view: `npm run wcagate:results` → [results](docs/RESULTS.md).
+Each run overwrites `wcag-audit/agent.md` (grouped by root cause, token-lean: what coding models read), `wcag-audit/latest.json` (full evidence) and `wcag-audit/results.html`. Default target is WCAG 2.2 AA. Optional HTML view: `pnpm run wcagate:results` → [results](docs/RESULTS.md).
 
-Need Playwright or Svelte? `npm run wcagate:prepare` installs those peers in **your** project, not inside this package.
+Need Playwright or Svelte? `pnpm run wcagate:prepare` installs those peers in **your** project, not inside this package.
 
 Config is `wcagate.config.mjs`. Copy a preset with `init`, or start from [examples/](examples/). Adapter and suppression rules: [Architecture](docs/ARCHITECTURE.md).
 
@@ -116,17 +116,20 @@ Presets, CI, and consumer wiring: [Consumers](docs/CONSUMERS.md). Native JSON co
 
 - [Start here](START_HERE.md) — operator quick path
 - [Consumers](docs/CONSUMERS.md) — install, `package.json` scripts, presets, prompts
+- [Agent report](docs/AGENT_REPORT.md) — grouped, token-lean output and `wcagate report`
 - [Results](docs/RESULTS.md) — `latest.json`, optional HTML, what to tell a human
 - [MCP](docs/MCP.md) — `wcagate-mcp` for coding agents
 - [CI](docs/CI.md) — keep exit codes `0` / `1` / `2` / `3` distinct
 - [Architecture](docs/ARCHITECTURE.md) — planes, adapters, suppressions, fail-closed gate
+- [Coverage](docs/COVERAGE.md) — everything a run checks, what it does not
+- [Contrast resolution](docs/CONTRAST.md) — how gradient, image, and glass `cantTell` contrast is measured from pixels
 - [Glassmorphism](docs/GLASSMORPHISM.md) — frost UI and `cantTell` contrast
 - [Skills](docs/SKILLS.md) — local agent skills only
 - [Manual testing](docs/MANUAL_TESTING.md) · [Rule authoring](docs/RULE_AUTHORING.md) · [Evidence sources](docs/SOURCE_EVALUATION.md)
 - [Contributing](CONTRIBUTING.md) · [Migration](MIGRATION.md) · [Changelog](CHANGELOG.md) · [Security](SECURITY.md)
 - [ADR-001](docs/decisions/ADR-001-canonical-package.md) · [ADR-002](docs/decisions/ADR-002-document-plane.md) (withdrawn) · [ADR-003](docs/decisions/ADR-003-surfaces.md)
 
-`npx wcagate help` lists every command. `npm run check` is the verification suite.
+`pnpm exec wcagate help` lists every command. `pnpm run check` is the verification suite.
 
 Automated checks find many defects. They cannot prove every process works with assistive technology — that still needs human evidence.
 

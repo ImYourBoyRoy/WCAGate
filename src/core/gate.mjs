@@ -1,7 +1,7 @@
 import { EXIT_CODES } from './constants.mjs';
 
 export function evaluateGate(run, gate) {
-  const active = run.findings.filter((finding) => !finding.suppressed && !finding.outOfScope);
+  const active = run.findings.filter((finding) => !finding.suppressed && !finding.outOfScope && !finding.baselined);
   const executionErrors = active.filter((finding) => finding.outcome === 'executionError');
   const unresolved = active.filter((finding) => gate.unresolvedOutcomes.includes(finding.outcome));
   const blocking = active.filter((finding) => gate.failOnOutcomes.includes(finding.outcome)

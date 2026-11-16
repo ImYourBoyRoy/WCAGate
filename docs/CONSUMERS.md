@@ -7,15 +7,15 @@ This package is the engine. Consumer projects install it; they do not copy `src/
 GitHub (the portable path; npm still places it at `@imyourboyroy/wcagate`):
 
 ```bash
-npm install --save-dev github:imyourboyroy/WCAGate
-# pin a release:
-npm install --save-dev github:imyourboyroy/WCAGate#v2.3.1
+pnpm add -D github:imyourboyroy/WCAGate
+# latest release, never a pinned version (semver range over release tags):
+pnpm add -D 'github:imyourboyroy/WCAGate#semver:*'
 ```
 
 Sibling checkout:
 
 ```bash
-npm install --save-dev file:../wcag-auditor
+pnpm add -D file:../wcag-auditor
 ```
 
 Do not `npm install @imyourboyroy/wcagate` from the npm registry. This package is not published there.
@@ -23,11 +23,11 @@ Do not `npm install @imyourboyroy/wcagate` from the npm registry. This package i
 Then:
 
 ```bash
-npx wcagate init --preset web   # or astro | static | tauri | native
-npx wcagate doctor
-npx wcagate prepare
-npx wcagate run --base-url http://127.0.0.1:4321 --routes /
-npx wcagate skills link --project .
+pnpm exec wcagate init --preset web   # or astro | static | tauri | native
+pnpm exec wcagate doctor
+pnpm exec wcagate prepare
+pnpm exec wcagate run --base-url http://127.0.0.1:4321 --routes /
+pnpm exec wcagate skills link --project .
 ```
 
 `core-path` must print this package root (the directory that contains `bin/wcagate.mjs`), not a toolkit re-bundle.
@@ -63,13 +63,13 @@ Astro (preview on 4321):
 Then:
 
 ```bash
-npm run wcagate:doctor
-npm run wcagate:prepare
-npm run wcagate:audit
-npm run wcagate:results
+pnpm run wcagate:doctor
+pnpm run wcagate:prepare
+pnpm run wcagate:audit
+pnpm run wcagate:results
 ```
 
-CI should call `npm run wcagate:audit -- --no-color` (or `npx wcagate run --no-color`) and must not start `wcagate:results`. Extra flags after `--` pass through to `wcagate`.
+CI should call `pnpm run wcagate:audit --no-color` (or `pnpm exec wcagate run --no-color`) and must not start `wcagate:results`. Extra flags after `--` pass through to `wcagate`.
 
 Copy-paste prompts for a coding model: [README](../README.md#ask-a-coding-model).
 

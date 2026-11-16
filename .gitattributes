@@ -1,0 +1,13 @@
+# Normalize text to LF in the repository and in every checkout (Git for Windows defaults to autocrlf=true; a CRLF shebang in
+# bin/*.mjs fails on macOS and Linux, and golden-file tests compare exact bytes).
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff2 binary
+*.zip binary
+*.tgz binary

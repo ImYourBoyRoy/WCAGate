@@ -1,5 +1,14 @@
 # Migration
 
+## 2.3.1 → 2.4.0
+
+Additive, but two defaults change what a run reports:
+
+- **Contrast incompletes are resolved.** `axe/color-contrast` cantTell findings on gradients, images, and glass are now measured from pixels and become failed or disappear (counted in `metadata.scenarios[].contrast`). Expect exit 3 runs to become exit 0 or exit 1. Opt out with `probes.contrastResolution.enabled: false`.
+- **New probes in `init` presets** (AA and AAA): `reflow` and `textSpacing`. Existing configs are unchanged; add them to enable.
+
+New, opt-in: `matrix` / `--color-schemes` / `--viewports`, `--sitemap`, `--baseline` / `--write-baseline`, scenario `colorScheme` / `viewport` / `reducedMotion` / `forcedColors`.
+
 ## 2.3.0 → 2.3.1
 
 Require **Node 24 or newer**. Node 20 and 22 are out of support. Node 26 is supported. CI covers 24 and 26.

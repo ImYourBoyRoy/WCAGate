@@ -24,7 +24,7 @@ See [ADR-001](decisions/ADR-001-canonical-package.md).
 8. Reject an empty applicable surface.
 9. Evaluate deterministic gate policy (in-scope findings only).
 10. Build an evidence-completeness scorecard (not a conformance score).
-11. Overwrite `wcag-audit/latest.json` and `wcag-audit/results.html`.
+11. Overwrite `wcag-audit/agent.md`, `wcag-audit/latest.json` and `wcag-audit/results.html`.
 12. Coding models present the gate from JSON or MCP `run`. Optionally serve the folder over `http://127.0.0.1:<port>/` for humans who want the HTML view.
 
 ## Evidence planes
@@ -72,7 +72,7 @@ Models **tell the user** the gate and findings. `wcagate serve` hosts that direc
 
 | Type | What it collects |
 |---|---|
-| `playwright-axe` | Rendered routes and states (Playwright + axe-core). Optional `webServer` starts a project command without a shell. |
+| `playwright-axe` | Rendered routes and states (Playwright + axe-core). Optional `webServer` starts a project command without a shell; with `autoPort: true` (the `init` default) it runs on a port WCAGate checked is free, owns the process, stops it afterwards, and never adopts or disturbs a server already on the framework's default port (4321 is often your own dev server). An explicit `--base-url` is your own server and is used as is. |
 | `svelte` | Svelte compiler `a11y_*` warnings. Parse errors are execution failures. |
 | `manual-evidence` | Versioned human checks. Expired evidence becomes untested. See [Manual testing](MANUAL_TESTING.md). |
 | `native-evidence` | JSON from Bevy, Godot, Tauri-native, or other GUI harnesses. See [Native integration](NATIVE_INTEGRATION.md). |

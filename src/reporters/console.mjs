@@ -1,12 +1,25 @@
 import { TOOLKIT_NAME, TOOLKIT_VERSION } from '../core/constants.mjs';
+import { renderAgentReport } from './agent.mjs';
 
+/**
+ * Console output is what a coding model reads after every `wcagate run`, so the default is the grouped, token-lean
+ * agent view. `style: 'verbose'` (CLI `--verbose`) keeps the per-finding listing for humans debugging a gate.
+ */
 export function renderConsoleReport(run, options = {}) {
+  if (options.style === 'verbose') return renderVerboseConsoleReport(run, options);
+  return renderAgentReport(run, options);
+}
+
+export function renderVerboseConsoleReport(run, options = {}) {
   const useColor = options.color ?? (process.stdout.isTTY && !process.env.NO_COLOR);
   const paint = createPainter(useColor);
   const lines = [];
   lines.push(`${paint.bold(`${TOOLKIT_NAME} ${TOOLKIT_VERSION}`)} — ${run.project.name}`);
   lines.push(`Run ${run.id} | profile ${run.profile} | surfaces ${run.surfaceCount} | findings ${run.summary.total}`);
   lines.push(`Gate: ${formatGate(run.gate, paint)}`);
+  if (run.baseline) {
+    lines.push(`Baseline ${run.baseline.file}: ${run.baseline.known} known (not blocking), ${run.baseline.new} new, ${run.baseline.fixed} fixed since the baseline`);
+  }
   lines.push('');
 
   const active = run.findings.filter((finding) => !finding.suppressed && finding.outcome !== 'passed' && finding.outcome !== 'inapplicable');
@@ -15,7 +28,7 @@ export function renderConsoleReport(run, options = {}) {
   } else {
     for (const finding of active) {
       const location = formatLocation(finding.target);
-      lines.push(`${outcomeLabel(finding.outcome, paint)} ${paint.bold(finding.ruleId)} [${finding.severity}]${location ? ` — ${location}` : ''}`);
+      lines.push(`${finding.baselined ? paint.yellow('KNOWN ') : ''}${outcomeLabel(finding.outcome, paint)} ${paint.bold(finding.ruleId)} [${finding.severity}]${location ? ` — ${location}` : ''}`);
       lines.push(`  ${finding.title}`);
       if (finding.description) lines.push(`  ${singleLine(finding.description)}`);
       if (finding.remediation) lines.push(`  Fix: ${singleLine(finding.remediation)}`);

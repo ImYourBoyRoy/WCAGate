@@ -1,6 +1,8 @@
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { AdapterError } from './errors.mjs';
+import { findFreePort, listenerBelongsTo, listenerInfo, replacePort } from './ports.mjs';
+import { resolveSpawn } from './spawn-cross.mjs';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_POLL_INTERVAL_MS = 150;
@@ -16,15 +18,33 @@ export async function startManagedWebServer(config, context, fallbackURL) {
   }
 
   validateWebServerRuntimeConfig(config);
-  const readyURL = config.url ?? fallbackURL;
+  let readyURL = config.url ?? fallbackURL;
   if (!readyURL) throw new AdapterError('webServer requires url when the adapter has no baseURL');
+
+  // autoPort: the managed server runs on a port WCAGate checked is free and owns, so a dev server already on the framework's
+  // default port is neither audited by mistake nor disturbed. The chosen origin is returned as `baseURL` for the adapter.
+  let autoPort = null;
+  let command = config.command;
+  let commandArgs = config.args ?? [];
+  let commandEnv = config.env ?? {};
+  if (config.autoPort) {
+    const target = new URL(readyURL);
+    const requested = Number(target.port) || (target.protocol === 'https:' ? 443 : 80);
+    const found = await findFreePort(requested);
+    autoPort = { requestedPort: requested, port: found.port, moved: found.port !== requested };
+    if (autoPort.moved) autoPort.occupiedBy = listenerInfo(requested);
+    commandArgs = replacePort(commandArgs, requested, found.port);
+    commandEnv = { ...commandEnv, PORT: String(found.port) };
+    target.port = String(found.port);
+    readyURL = target.href;
+  }
 
   const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const pollIntervalMs = config.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const requestTimeoutMs = Math.min(config.requestTimeoutMs ?? 1_500, timeoutMs);
   const reuseExistingServer = config.reuseExistingServer ?? true;
 
-  if (reuseExistingServer && await isServerReady(readyURL, requestTimeoutMs)) {
+  if (reuseExistingServer && !config.autoPort && await isServerReady(readyURL, requestTimeoutMs)) {
     return {
       metadata: { readyURL, reused: true, command: null },
       close: async () => {}
@@ -34,16 +54,21 @@ export async function startManagedWebServer(config, context, fallbackURL) {
   const cwd = path.resolve(context.projectRoot, config.cwd ?? '.');
   const output = createOutputCollector(config.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES);
   let child;
+  let spawnError = null;
   try {
-    child = spawn(config.command, config.args ?? [], {
+    // On Windows a pnpm/npm/yarn .cmd shim runs through cmd.exe (Node refuses to spawn a .cmd directly).
+    const launch = resolveSpawn(command, commandArgs, {
       cwd,
-      env: { ...process.env, ...(config.env ?? {}) },
+      env: { ...process.env, ...commandEnv },
       shell: false,
       detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'pipe']
     });
+    child = spawn(launch.command, launch.args, launch.options);
+    // A failed spawn (ENOENT) arrives asynchronously as an 'error' event; without a listener it would crash the process.
+    child.on('error', (error) => { spawnError = error; });
   } catch (error) {
-    throw new AdapterError(`Unable to start web server command: ${error.message}`, { command: config.command, cwd }, error);
+    throw new AdapterError(`Unable to start web server command: ${error.message}`, { command, cwd }, error);
   }
 
   child.stdout?.on('data', (chunk) => output.append('stdout', chunk));
@@ -53,6 +78,8 @@ export async function startManagedWebServer(config, context, fallbackURL) {
     await waitForServerReady({
       child,
       readyURL,
+      spawnError: () => spawnError,
+      ownPort: autoPort ? new URL(readyURL).port : null,
       timeoutMs,
       pollIntervalMs,
       requestTimeoutMs,
@@ -65,12 +92,14 @@ export async function startManagedWebServer(config, context, fallbackURL) {
 
   let closed = false;
   return {
+    baseURL: autoPort?.moved ? new URL(readyURL).origin : undefined,
     metadata: {
       readyURL,
       reused: false,
       command: config.command,
-      args: config.args ?? [],
-      cwd
+      args: commandArgs,
+      cwd,
+      ...(autoPort ? { autoPort } : {})
     },
     close: async () => {
       if (closed) return;
@@ -102,18 +131,30 @@ export function validateWebServerRuntimeConfig(config) {
   if (config.reuseExistingServer !== undefined && typeof config.reuseExistingServer !== 'boolean') {
     throw new AdapterError('webServer.reuseExistingServer must be boolean');
   }
+  if (config.autoPort !== undefined && typeof config.autoPort !== 'boolean') {
+    throw new AdapterError('webServer.autoPort must be boolean');
+  }
 }
 
-async function waitForServerReady({ child, readyURL, timeoutMs, pollIntervalMs, requestTimeoutMs, output }) {
+async function waitForServerReady({ child, readyURL, spawnError = () => null, ownPort = null, timeoutMs, pollIntervalMs, requestTimeoutMs, output }) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
+    if (spawnError()) {
+      throw new AdapterError(`Unable to start web server command: ${spawnError().message}`, { readyURL }, spawnError());
+    }
     if (child.exitCode !== null || child.signalCode !== null) {
       throw new AdapterError(
         `Web server exited before becoming ready at ${readyURL}.${formatCapturedOutput(output)}`,
         { exitCode: child.exitCode, signal: child.signalCode, readyURL }
       );
     }
-    if (await isServerReady(readyURL, requestTimeoutMs)) return;
+    if (await isServerReady(readyURL, requestTimeoutMs)) {
+      // The port was free when chosen; if a foreign server answers before ours bound it, auditing it would audit the wrong site.
+      if (ownPort && listenerBelongsTo(Number(ownPort), child.pid) === false) {
+        throw new AdapterError(`Another process answered on port ${ownPort} before the managed web server; it was not used. Rerun to pick a new port.`, { readyURL });
+      }
+      return;
+    }
     await delay(pollIntervalMs);
   }
   throw new AdapterError(
@@ -142,19 +183,41 @@ async function isServerReady(url, requestTimeoutMs) {
 }
 
 async function stopProcessTree(child, timeoutMs) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  sendSignal(child, 'SIGTERM');
-  if (await waitForExit(child, timeoutMs)) return;
-  sendSignal(child, 'SIGKILL');
-  await waitForExit(child, Math.min(timeoutMs, 1_000));
+  if (!child?.pid) return;
+  const gone = () => child.exitCode !== null || child.signalCode !== null;
+  if (!gone()) {
+    sendSignal(child, 'SIGTERM');
+    await waitForExit(child, timeoutMs);
+  }
+  // A wrapper (sh, pnpm, cmd) can exit while the real server it started is still shutting down: sweep the group.
+  if (!gone()) {
+    sendSignal(child, 'SIGKILL');
+    await waitForExit(child, Math.min(timeoutMs, 1_000));
+  } else if (groupAlive(child.pid)) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(timeoutMs, 1_000)));
+    if (groupAlive(child.pid)) sendSignal(child, 'SIGKILL');
+  }
+}
+
+function groupAlive(pid) {
+  if (process.platform === 'win32') return false;
+  try {
+    process.kill(-pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function sendSignal(child, signal) {
   try {
-    if (process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal);
-    else child.kill(signal);
+    if (process.platform === 'win32') {
+      // child.kill() would stop only the shell; /T takes the whole tree (cmd -> pnpm -> node).
+      spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    } else if (child.pid) process.kill(-child.pid, signal);
   } catch (error) {
-    if (error.code !== 'ESRCH') throw error;
+    // ESRCH: gone already. EPERM: macOS reports it for a group whose leader just exited.
+    if (error.code !== 'ESRCH' && error.code !== 'EPERM') throw error;
   }
 }
 

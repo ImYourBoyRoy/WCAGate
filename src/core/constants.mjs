@@ -1,6 +1,9 @@
 export const TOOLKIT_NAME = 'WCAGate';
 export const PACKAGE_NAME = '@imyourboyroy/wcagate';
-export const TOOLKIT_VERSION = '2.3.1';
+import { readFileSync } from 'node:fs';
+
+// The version lives only in package.json; everything else reads it from there.
+export const TOOLKIT_VERSION = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
 export const CONFIG_SCHEMA_VERSION = 1;
 export const RUN_SCHEMA_VERSION = '1.0.0';
 export const EVIDENCE_SCHEMA_VERSION = 1;
@@ -74,6 +77,7 @@ export const DEFAULT_OUTPUT_DIRECTORY = 'wcag-audit';
 
 export const DEFAULT_REPORTERS = Object.freeze([
   { type: 'console' },
+  { type: 'agent', file: 'agent.md' },
   { type: 'json', file: 'latest.json' },
   { type: 'results', file: 'results.html' }
 ]);
@@ -86,5 +90,6 @@ export const KNOWN_REPORTER_TYPES = Object.freeze([
   'html',
   'markdown',
   'results',
-  'dashboard'
+  'dashboard',
+  'agent'
 ]);

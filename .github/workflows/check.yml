@@ -10,16 +10,30 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    name: check (${{ matrix.os }}, node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    # Windows reports without blocking until its first green run proves the suite there; Linux and macOS block.
+    continue-on-error: ${{ matrix.experimental == true }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest]
         node-version: [24, 26]
+        include:
+          - os: windows-latest
+            node-version: 26
+            experimental: true
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+      # npm ships with Node; pnpm is the package manager here (no version is pinned).
+      - run: npm install --global pnpm
+      # The lockfile pins dev tooling only; playwright and @axe-core/playwright are peers that pnpm installs automatically.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm run check

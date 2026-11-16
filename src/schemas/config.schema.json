@@ -151,6 +151,10 @@
             },
             "reuseExistingServer": {
               "type": "boolean"
+            },
+            "autoPort": {
+              "type": "boolean",
+              "description": "Run the managed server on a port that is free (preferring the one in url), never adopting a server that already listens there; the chosen origin replaces baseURL."
             }
           }
         }
@@ -172,7 +176,8 @@
             "html",
             "markdown",
             "results",
-            "dashboard"
+            "dashboard",
+            "agent"
           ]
         },
         "file": {

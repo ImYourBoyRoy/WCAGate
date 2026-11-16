@@ -43,7 +43,7 @@ for (const file of files) {
 
 const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 const constants = await fs.readFile(path.join(root, 'src/core/constants.mjs'), 'utf8');
-assert.match(constants, new RegExp(`TOOLKIT_VERSION = '${escapeRegExp(packageJson.version)}'`));
+assert.doesNotMatch(constants, /TOOLKIT_VERSION = '/, 'TOOLKIT_VERSION must be read from package.json, not hardcoded');
 const cliStat = await fs.stat(path.join(root, 'src/cli.mjs'));
 if ((cliStat.mode & 0o111) === 0) errors.push('src/cli.mjs: executable bit is not set');
 

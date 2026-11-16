@@ -1,6 +1,6 @@
 {
   "name": "@imyourboyroy/wcagate",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "Fail-closed WCAG 2.2 accessibility evidence gate for websites, Svelte, Tauri, Bevy, and Godot.",
   "type": "module",
   "bin": {
@@ -51,8 +51,8 @@
     "package:check": "node ./scripts/package-check.mjs",
     "schema:check": "node ./scripts/schema-check.mjs",
     "typecheck": "tsc -p ./tests/types/tsconfig.json",
-    "check": "npm run lint && npm run schema:check && npm run typecheck && npm run test && npm run test:cli && npm run package:check",
-    "verify": "npm run check"
+    "check": "pnpm run lint && pnpm run schema:check && pnpm run typecheck && pnpm run test && pnpm run test:cli && pnpm run package:check",
+    "verify": "pnpm run check"
   },
   "keywords": [
     "accessibility",

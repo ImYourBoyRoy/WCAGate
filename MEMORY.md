@@ -2,7 +2,7 @@
 
 ## 1. Project Snapshot
 - **Name**: WCAGate (`@imyourboyroy/wcagate`)
-- **Version**: `2.3.1`
+- **Version**: `2.4.0` (local, unpublished; last GitHub release `v2.3.1`)
 - **Path**: `/home/v1x0r/Desktop/AI/wcag-auditor`
 - **Purpose**: Canonical accessibility evidence gate for web, Astro, Svelte, Tauri, Bevy, and Godot
 - **Split**: This repo owns the engine. Portable Web Toolkit should keep only a thin site-profile bridge (follow-up: toolkit copy is still a re-bundle as of 2.0.3)
@@ -56,7 +56,7 @@
 
 ## 7. Verified Resources & Versions
 - Node `>=24.0.0` (engines). CI matrix: **Node 24** Active LTS and **Node 26** Current (verified 2026-08-16). Operator machines often Node 26+.
-- Package version `2.3.1`
+- Package version `2.4.0`
 - TypeScript `6.0.3` (devDependency, checked 2026-08-16)
 - GitHub Actions: `actions/checkout@v7`, `actions/setup-node@v7` (checked 2026-08-16)
 
@@ -69,6 +69,7 @@
 - Not published to the npm registry. GitHub is canonical: https://github.com/ImYourBoyRoy/WCAGate
 
 ## 12. Recent Changes
+- 2026-11-16: 2.4.0 (unpublished, uncommitted) — pixel-sampled contrast resolution (`src/core/contrast*.mjs`, `png.mjs`; docs/CONTRAST.md), scenario matrix (`matrix.mjs`, `--color-schemes/--viewports`), reflow + text-spacing probes (`src/adapters/runtime-probes.mjs`), baseline ratchet (`baseline.mjs`, `--baseline/--write-baseline`), sitemap routes (`sitemap.mjs`, `--sitemap`). Real-browser tests skip when Playwright/axe are absent (CI does not install them). Verified on pyenv-native GUI: 73/73 contrast incompletes resolved.
 - 2026-09-21: GitHub discoverability pass — 20 topics, richer About/README keywords + badges + author, CONTRIBUTING.md, security advisories URL.
 - 2026-08-16: Published `ImYourBoyRoy/WCAGate` (`v2.3.0` tag + GitHub Release). Main and tag CI (`npm ci` + `npm run check` on Node 24) succeeded.
 - 2026-08-16: README prompts for coding models (install / install-and-audit / audit-only) plus consumer `package.json` scripts (`wcagate:doctor`, `wcagate:prepare`, `wcagate:audit`, `wcagate:results`)
@@ -79,6 +80,7 @@
 - 2026-08-04: Extracted standalone package from Portable Web Toolkit vendored copy
 
 ## 13. Validation / Tests Run
+- 2026-11-16: `npm run check` passed (73 tests incl. 3 real-Chromium tests run via a local node_modules symlink, since removed).
 - 2026-08-16: `npm run check` passed locally; GitHub Actions check succeeded on `main` and `v2.3.0` (Node 24, `npm ci`)
 
 ## 14. Next Session Quick Start

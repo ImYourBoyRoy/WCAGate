@@ -1,7 +1,8 @@
 // ./scripts/package-check.mjs
 /**
  * Pack this package and install it into a throwaway consumer to verify the published tarball.
- * Nested npm must not inherit the parent `npm run` environment (prefix, package, lifecycle).
+ * Packs with pnpm (npm when pnpm is absent) and smoke-installs the tarball with every package manager that is present, so
+ * consumers on pnpm and on npm are both covered. Nested managers must not inherit the parent script environment.
  *
  * Usage: node ./scripts/package-check.mjs
  */
@@ -10,7 +11,8 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { resolveSpawn } from '../src/core/spawn-cross.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
@@ -24,12 +26,19 @@ for (const exported of Object.values(packageJson.exports)) {
   else for (const target of Object.values(exported)) await fs.access(path.join(root, target));
 }
 
-const imported = await import(path.join(root, 'src', 'index.mjs'));
+const imported = await import(pathToFileURL(path.join(root, 'src', 'index.mjs')).href);
 assert.equal(imported.TOOLKIT_VERSION, packageJson.version);
 assert.equal(typeof imported.runAccessibility, 'function');
 
+const spawnCross = (command, args, options) => {
+  const resolved = resolveSpawn(command, args, options);
+  return spawnSync(resolved.command, resolved.args, resolved.options);
+};
+const available = (name) => spawnCross(name, ['--version'], { stdio: 'ignore' }).status === 0;
+const managers = ['pnpm', 'npm'].filter(available);
+assert.ok(managers.length > 0, 'pnpm or npm is required');
 const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'wcagate-package-'));
-const packResult = execute('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', staging], root);
+const packResult = execute(managers[0], ['pack', '--json', '--ignore-scripts', '--pack-destination', staging], root);
 const packInfo = normalizePackInfo(JSON.parse(packResult.stdout), packageJson.name);
 assert.ok(packInfo.files.length > 20, 'package should contain implementation and documentation');
 const names = packInfo.files.map((file) => file.path);
@@ -40,11 +49,13 @@ assert.ok(names.every((name) => !name.startsWith('tests/')), 'tests must not be 
 assert.ok(names.every((name) => !name.startsWith('scripts/')), 'internal scripts must not be published');
 assert.ok(names.every((name) => !/a11y-toolkit|glass-providence|legacy/i.test(name)), 'stale toolkit files must not be published');
 
-const tarball = path.join(staging, packInfo.filename);
-const consumer = path.join(staging, 'consumer');
+const tarball = path.isAbsolute(packInfo.filename) ? packInfo.filename : path.join(staging, path.basename(packInfo.filename));
+
+for (const manager of managers) {
+const consumer = path.join(staging, `consumer-${manager}`);
 await fs.mkdir(consumer);
 await fs.writeFile(path.join(consumer, 'package.json'), '{"name":"wcagate-consumer","private":true,"type":"module"}\n');
-execute('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', tarball], consumer);
+execute(manager, manager === 'npm' ? ['install', '--ignore-scripts', '--no-audit', '--no-fund', tarball] : ['add', '--ignore-scripts', tarball], consumer);
 await fs.writeFile(path.join(consumer, 'evidence.json'), `${JSON.stringify({
   schemaVersion: 1,
   producer: { name: 'consumer-fixture', version: '1.0.0', kind: 'install-test' },
@@ -69,9 +80,10 @@ execute(process.execPath, [
   '-e',
   "import('@imyourboyroy/wcagate').then((module) => { if (typeof module.runAccessibility !== 'function') process.exit(1); })"
 ], consumer);
+}
 
 await fs.rm(staging, { recursive: true, force: true });
-process.stdout.write(`Package check passed: ${packInfo.files.length} published files, packed install and CLI smoke test clean.\n`);
+process.stdout.write(`Package check passed: ${packInfo.files.length} published files, packed install and CLI smoke test clean (${managers.join(', ')}).\n`);
 
 function normalizePackInfo(parsed, packageName) {
   if (Array.isArray(parsed)) return parsed[0];
@@ -81,7 +93,7 @@ function normalizePackInfo(parsed, packageName) {
     const first = Object.values(parsed)[0];
     if (first?.files) return first;
   }
-  throw new Error(`Unexpected npm pack --json shape: ${JSON.stringify(parsed).slice(0, 200)}`);
+  throw new Error(`Unexpected pack --json shape: ${JSON.stringify(parsed).slice(0, 200)}`);
 }
 
 function nestedNpmEnv() {
@@ -94,7 +106,7 @@ function nestedNpmEnv() {
 }
 
 function execute(command, args, cwd) {
-  const result = spawnSync(command, args, {
+  const result = spawnCross(command, args, {
     cwd,
     encoding: 'utf8',
     env: nestedNpmEnv()

@@ -14,6 +14,8 @@ import { toJsonSafe } from './json.mjs';
 import { annotateScope, buildScorecard } from './profile.mjs';
 import { normalizeFinding, summarizeFindings } from './result.mjs';
 import { enrichFindingsWithSourceLocations } from './source-locate.mjs';
+import { applyBaseline, compareWithPrevious } from './baseline.mjs';
+import { mergeMatrixDuplicates } from './merge.mjs';
 import { applySuppressions } from './suppressions.mjs';
 
 export async function runAccessibility(inputConfig, options = {}) {
@@ -81,6 +83,7 @@ export async function runAccessibility(inputConfig, options = {}) {
     runId,
     projectName: config.project.name
   });
+  findings = mergeMatrixDuplicates(findings);
   findings = enrichFindingsWithSourceLocations(findings, {
     projectRoot: config.project.root
   });
@@ -114,6 +117,11 @@ export async function runAccessibility(inputConfig, options = {}) {
   }
 
   findings = annotateScope(findings, config.profile);
+  const baselineSummary = options.baseline
+    ? applyBaseline(findings, options.baseline.document, options.baseline.file)
+    : null;
+
+  const sinceLastRun = options.previous ? compareWithPrevious(findings, options.previous, config.project.name) : null;
 
   const elapsedMs = Math.max(0, Date.now() - startedWallClock);
   const endedAt = new Date(now.getTime() + elapsedMs);
@@ -133,6 +141,8 @@ export async function runAccessibility(inputConfig, options = {}) {
     summary: summarizeFindings(findings),
     scorecard: buildScorecard(findings, config.profile),
     gate: null,
+    ...(baselineSummary ? { baseline: baselineSummary } : {}),
+    ...(sinceLastRun ? { sinceLastRun: { new: sinceLastRun.new, fixed: sinceLastRun.fixed, unchanged: sinceLastRun.unchanged, previousRunId: sinceLastRun.previousRunId } } : {}),
     metadata: toJsonSafe(config.metadata, 'run metadata'),
     reportFiles: []
   };
@@ -140,7 +150,8 @@ export async function runAccessibility(inputConfig, options = {}) {
   run.reportFiles = await runReporters(run, config.reporters, {
     quiet: options.quiet,
     color: options.color,
-    stream: options.stream
+    stream: options.stream,
+    consoleStyle: options.consoleStyle
   });
   return run;
 }

@@ -16,8 +16,10 @@ import { pathExists, readJsonFile } from './filesystem.mjs';
 import { toJsonSafe, validateJsonSafe } from './json.mjs';
 import { validateRelativeOutputFile } from './path-policy.mjs';
 import { KNOWN_PROFILES } from './profile.mjs';
+import { COLOR_SCHEMES, normalizeViewport } from './matrix.mjs';
 import { INIT_PRESETS, normalizePreset, starterConfigSource, starterEvidenceDocument, starterNativeEvidenceDocument } from './presets.mjs';
 import { validateSuppression } from './suppressions.mjs';
+import { detectPackageManager } from './package-manager.mjs';
 
 const CONFIG_NAMES = ['wcagate.config.mjs', 'wcagate.config.js', 'wcagate.config.json'];
 
@@ -268,7 +270,7 @@ function validateAdapterConfig(adapter, index, errors) {
       validatePlainObject(adapter.compilerOptions, `${prefix}.compilerOptions`, errors);
       break;
     case 'playwright-axe': {
-      rejectUnknownKeys(adapter, [...common, 'baseURL', 'browser', 'scenarios', 'timeoutMs', 'launchOptions', 'contextOptions', 'runOnly', 'include', 'exclude', 'axeOptions', 'probes', 'screenshotOnFinding', 'webServer'], prefix, errors);
+      rejectUnknownKeys(adapter, [...common, 'baseURL', 'browser', 'scenarios', 'timeoutMs', 'launchOptions', 'contextOptions', 'runOnly', 'include', 'exclude', 'axeOptions', 'probes', 'screenshotOnFinding', 'webServer', 'matrix', 'concurrency', 'settle'], prefix, errors);
       if (adapter.baseURL !== undefined) requireNonEmptyString(adapter.baseURL, `${prefix}.baseURL`, errors);
       if (adapter.browser !== undefined && !['chromium', 'firefox', 'webkit'].includes(adapter.browser)) {
         errors.push(`${prefix}.browser must be chromium, firefox, or webkit`);
@@ -277,10 +279,13 @@ function validateAdapterConfig(adapter, index, errors) {
       validateStringArray(adapter.include, `${prefix}.include`, errors);
       validateStringArray(adapter.exclude, `${prefix}.exclude`, errors);
       validatePositiveInteger(adapter.timeoutMs, `${prefix}.timeoutMs`, errors);
+      validatePositiveInteger(adapter.concurrency, `${prefix}.concurrency`, errors);
+      validateSettle(adapter.settle, `${prefix}.settle`, errors);
       validatePlainObject(adapter.launchOptions, `${prefix}.launchOptions`, errors);
       validatePlainObject(adapter.contextOptions, `${prefix}.contextOptions`, errors);
       validatePlainObject(adapter.axeOptions, `${prefix}.axeOptions`, errors);
       validateRuntimeProbes(adapter.probes, `${prefix}.probes`, errors);
+      if (adapter.matrix !== undefined) validateMatrix(adapter.matrix, `${prefix}.matrix`, errors);
       if (adapter.screenshotOnFinding !== undefined && typeof adapter.screenshotOnFinding !== 'boolean') {
         errors.push(`${prefix}.screenshotOnFinding must be boolean`);
       }
@@ -304,7 +309,7 @@ function validateScenario(scenario, prefix, errors) {
     errors.push(`${prefix} must be an object`);
     return;
   }
-  rejectUnknownKeys(scenario, ['name', 'path', 'url', 'waitUntil', 'timeoutMs', 'setup', 'teardown', 'steps', 'runOnly', 'include', 'exclude', 'axeOptions', 'probes', 'screenshotOnFinding'], prefix, errors);
+  rejectUnknownKeys(scenario, ['name', 'path', 'url', 'waitUntil', 'timeoutMs', 'setup', 'teardown', 'steps', 'runOnly', 'include', 'exclude', 'axeOptions', 'probes', 'screenshotOnFinding', 'colorScheme', 'viewport', 'reducedMotion', 'forcedColors', 'expectStatus', 'settle'], prefix, errors);
   requireNonEmptyString(scenario.name, `${prefix}.name`, errors);
   const hasUrl = typeof scenario.url === 'string' && scenario.url.trim() !== '';
   const hasPath = typeof scenario.path === 'string' && scenario.path.trim() !== '';
@@ -322,6 +327,17 @@ function validateScenario(scenario, prefix, errors) {
   validateStringArray(scenario.exclude, `${prefix}.exclude`, errors);
   validatePlainObject(scenario.axeOptions, `${prefix}.axeOptions`, errors);
   validateRuntimeProbes(scenario.probes, `${prefix}.probes`, errors);
+  validateSettle(scenario.settle, `${prefix}.settle`, errors);
+  if (scenario.expectStatus !== undefined) {
+    const list = [].concat(scenario.expectStatus);
+    if (list.length === 0 || list.some((status) => !Number.isInteger(status) || status < 100 || status > 599)) {
+      errors.push(`${prefix}.expectStatus must be an HTTP status code or an array of them`);
+    }
+  }
+  if (scenario.colorScheme !== undefined && !COLOR_SCHEMES.includes(scenario.colorScheme)) errors.push(`${prefix}.colorScheme must be light or dark`);
+  if (scenario.reducedMotion !== undefined && !['reduce', 'no-preference'].includes(scenario.reducedMotion)) errors.push(`${prefix}.reducedMotion must be reduce or no-preference`);
+  if (scenario.forcedColors !== undefined && !['active', 'none'].includes(scenario.forcedColors)) errors.push(`${prefix}.forcedColors must be active or none`);
+  if (scenario.viewport !== undefined && !normalizeViewport(scenario.viewport)) errors.push(`${prefix}.viewport must be mobile, tablet, desktop, or { width, height }`);
   if (scenario.screenshotOnFinding !== undefined && typeof scenario.screenshotOnFinding !== 'boolean') {
     errors.push(`${prefix}.screenshotOnFinding must be boolean`);
   }
@@ -377,7 +393,10 @@ function validateRuntimeProbes(probes, prefix, errors) {
     errors.push(`${prefix} must be an object`);
     return;
   }
-  rejectUnknownKeys(probes, ['targetSizeEnhanced', 'focusIndicatorReview'], prefix, errors);
+  rejectUnknownKeys(probes, ['targetSizeEnhanced', 'focusIndicatorReview', 'contrastResolution', 'reflow', 'textSpacing'], prefix, errors);
+  validateContrastProbe(probes.contrastResolution, `${prefix}.contrastResolution`, errors);
+  validateSimpleProbe(probes.reflow, `${prefix}.reflow`, ['enabled', 'width', 'height', 'tolerance', 'settleMs', 'ignoreSelector', 'severity'], errors);
+  validateSimpleProbe(probes.textSpacing, `${prefix}.textSpacing`, ['enabled', 'css', 'ignoreSelector', 'severity'], errors);
   if (probes.targetSizeEnhanced !== undefined) {
     const probe = probes.targetSizeEnhanced;
     if (!probe || typeof probe !== 'object' || Array.isArray(probe)) errors.push(`${prefix}.targetSizeEnhanced must be an object`);
@@ -402,6 +421,69 @@ function validateRuntimeProbes(probes, prefix, errors) {
   }
 }
 
+function validateSettle(settle, prefix, errors) {
+  if (settle === undefined || settle === false) return;
+  if (!settle || typeof settle !== 'object' || Array.isArray(settle)) {
+    errors.push(`${prefix} must be false or an object`);
+    return;
+  }
+  rejectUnknownKeys(settle, ['enabled', 'scroll', 'timeoutMs'], prefix, errors);
+  for (const field of ['enabled', 'scroll']) {
+    if (settle[field] !== undefined && typeof settle[field] !== 'boolean') errors.push(`${prefix}.${field} must be boolean`);
+  }
+  validatePositiveInteger(settle.timeoutMs, `${prefix}.timeoutMs`, errors);
+}
+
+function validateMatrix(matrix, prefix, errors) {
+  if (!matrix || typeof matrix !== 'object' || Array.isArray(matrix)) {
+    errors.push(`${prefix} must be an object`);
+    return;
+  }
+  rejectUnknownKeys(matrix, ['colorSchemes', 'viewports'], prefix, errors);
+  if (matrix.colorSchemes !== undefined) {
+    if (!Array.isArray(matrix.colorSchemes) || matrix.colorSchemes.some((scheme) => !COLOR_SCHEMES.includes(scheme))) {
+      errors.push(`${prefix}.colorSchemes must be an array of light or dark`);
+    }
+  }
+  if (matrix.viewports !== undefined) {
+    if (!Array.isArray(matrix.viewports)) errors.push(`${prefix}.viewports must be an array`);
+    else matrix.viewports.forEach((viewport, index) => {
+      if (!normalizeViewport(viewport)) errors.push(`${prefix}.viewports[${index}] must be mobile, tablet, desktop, or { width, height }`);
+    });
+  }
+}
+
+function validateContrastProbe(probe, prefix, errors) {
+  if (probe === undefined) return;
+  if (!probe || typeof probe !== 'object' || Array.isArray(probe)) {
+    errors.push(`${prefix} must be an object`);
+    return;
+  }
+  rejectUnknownKeys(probe, ['enabled', 'maxNodes', 'passShare', 'failShare'], prefix, errors);
+  if (probe.enabled !== undefined && typeof probe.enabled !== 'boolean') errors.push(`${prefix}.enabled must be boolean`);
+  validatePositiveInteger(probe.maxNodes, `${prefix}.maxNodes`, errors);
+  for (const field of ['passShare', 'failShare']) {
+    if (probe[field] !== undefined && !(typeof probe[field] === 'number' && probe[field] >= 0 && probe[field] <= 1)) {
+      errors.push(`${prefix}.${field} must be a number between 0 and 1`);
+    }
+  }
+}
+
+function validateSimpleProbe(probe, prefix, allowed, errors) {
+  if (probe === undefined) return;
+  if (!probe || typeof probe !== 'object' || Array.isArray(probe)) {
+    errors.push(`${prefix} must be an object`);
+    return;
+  }
+  rejectUnknownKeys(probe, allowed, prefix, errors);
+  if (typeof probe.enabled !== 'boolean') errors.push(`${prefix}.enabled must be boolean`);
+  for (const field of ['width', 'height', 'settleMs']) validatePositiveInteger(probe[field], `${prefix}.${field}`, errors);
+  if (probe.severity !== undefined && !SEVERITIES.includes(probe.severity)) errors.push(`${prefix}.severity is invalid`);
+  for (const field of ['css', 'ignoreSelector']) {
+    if (probe[field] !== undefined) requireNonEmptyString(probe[field], `${prefix}.${field}`, errors);
+  }
+}
+
 function validateWebServerConfig(server, prefix, errors) {
   if (!server || typeof server !== 'object' || Array.isArray(server)) {
     errors.push(`${prefix} must be an object`);
@@ -420,6 +502,9 @@ function validateWebServerConfig(server, prefix, errors) {
   }
   if (server.reuseExistingServer !== undefined && typeof server.reuseExistingServer !== 'boolean') {
     errors.push(`${prefix}.reuseExistingServer must be boolean`);
+  }
+  if (server.autoPort !== undefined && typeof server.autoPort !== 'boolean') {
+    errors.push(`${prefix}.autoPort must be boolean`);
   }
   if (server.cwd !== undefined) requireNonEmptyString(server.cwd, `${prefix}.cwd`, errors);
   if (server.url !== undefined) requireNonEmptyString(server.url, `${prefix}.url`, errors);
@@ -509,7 +594,8 @@ export async function writeStarterFiles(targetDirectory, options = {}) {
   await fs.writeFile(configPath, starterConfigSource({
     preset,
     profile: options.profile ?? 'wcag22-aa',
-    projectName: options.projectName ?? 'replace-with-project-name'
+    projectName: options.projectName ?? 'replace-with-project-name',
+    packageManager: options.packageManager ?? detectPackageManager(directory)
   }), 'utf8');
   await fs.writeFile(evidencePath, `${JSON.stringify(starterEvidenceDocument(options.projectName ?? 'replace-with-project-name'), null, 2)}\n`, 'utf8');
   const created = { configPath, evidencePath };

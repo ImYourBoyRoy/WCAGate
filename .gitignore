@@ -7,6 +7,7 @@ node_modules/
 wcag-audit/dashboard.html
 wcag-audit/results.html
 wcag-audit/latest.json
+wcag-audit/agent.md
 wcag-audit/*.sarif
 wcag-audit/*.xml
 wcag-audit.json

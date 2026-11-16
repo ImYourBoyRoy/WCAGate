@@ -54,7 +54,8 @@ test('summarizeForAgent lists blocking findings for the model to tell the user',
     findings: [finding]
   });
   assert.equal(summary.passed, false);
-  assert.equal(summary.blocking[0].location, 'src/ui/Toolbar.svelte:42');
+  assert.equal(summary.causes[0].where[0].at, 'src/ui/Toolbar.svelte:42');
+  assert.equal(summary.causes[0].rule, 'axe/button-name');
   assert.match(summary.tellTheUser, /Do not invent a WCAG percentage/);
 });
 

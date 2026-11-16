@@ -53,6 +53,8 @@ export interface Finding extends Omit<RawFinding, 'target' | 'confidence' | 'aut
   fingerprint: string;
   suppressed: boolean;
   outOfScope?: boolean;
+  /** True when a --baseline file already knows this finding; it stays visible but does not block the gate. */
+  baselined?: boolean;
   suppression?: AppliedSuppression;
 }
 
@@ -89,6 +91,38 @@ export interface AdapterContext {
   metadata: Record<string, unknown>;
   importModule?: (specifier: string) => Promise<unknown>;
   modules?: Record<string, unknown>;
+  /** Parsed baseline (see readBaseline). Known findings stay visible but stop blocking the gate. */
+  baseline?: { file: string; document: BaselineDocument };
+  /** The previous run (see readPreviousRun); the report marks findings absent from it as new. */
+  previous?: AccessibilityRun | null;
+  /** 'verbose' keeps the per-finding console listing; default is the grouped agent view. */
+  consoleStyle?: 'agent' | 'verbose';
+}
+
+export interface BaselineEntry {
+  key: string;
+  ruleId: string;
+  outcome?: string;
+  severity?: string;
+  location?: string;
+}
+
+export interface BaselineDocument {
+  schemaVersion: 1;
+  createdAt?: string;
+  project?: string;
+  profile?: string;
+  entries: BaselineEntry[];
+}
+
+export interface BaselineSummary {
+  file: string;
+  createdAt?: string;
+  known: number;
+  new: number;
+  fixed: number;
+  newFindings: Array<{ ruleId: string; severity: string; outcome: string; fingerprint: string }>;
+  fixedEntries: Array<{ key: string; ruleId: string; location?: string }>;
 }
 
 export type AdapterRunner<Config extends object = Record<string, unknown>> = (
@@ -165,9 +199,55 @@ export interface FocusIndicatorProbeConfig {
   severity?: Severity;
 }
 
+export interface ContrastResolutionConfig {
+  /** Default true. Set false to leave axe color-contrast incompletes as cantTell. */
+  enabled?: boolean;
+  maxNodes?: number;
+  /** At most this share of sampled pixels may fail for a pass (default 0.02). */
+  passShare?: number;
+  /** At least this share of sampled pixels must fail for a failure (default 0.5). */
+  failShare?: number;
+}
+
+export interface ReflowProbeConfig {
+  enabled: boolean;
+  width?: number;
+  height?: number;
+  tolerance?: number;
+  settleMs?: number;
+  ignoreSelector?: string;
+  severity?: Severity;
+}
+
+export interface TextSpacingProbeConfig {
+  enabled: boolean;
+  css?: string;
+  ignoreSelector?: string;
+  severity?: Severity;
+}
+
 export interface RuntimeProbeConfig {
   targetSizeEnhanced?: TargetSizeProbeConfig;
   focusIndicatorReview?: FocusIndicatorProbeConfig;
+  contrastResolution?: ContrastResolutionConfig;
+  reflow?: ReflowProbeConfig;
+  textSpacing?: TextSpacingProbeConfig;
+}
+
+export type ViewportPreset = 'mobile' | 'tablet' | 'desktop';
+export type ViewportConfig = ViewportPreset | { name?: string; width: number; height: number };
+
+export interface SettleConfig {
+  enabled?: boolean;
+  /** Scroll the whole page once to trigger reveal-on-scroll and lazy content (default true). */
+  scroll?: boolean;
+  /** Budget for the whole settle step in ms (default 4000). */
+  timeoutMs?: number;
+}
+
+export interface ScenarioMatrixConfig {
+  colorSchemes?: Array<'light' | 'dark'>;
+  viewports?: ViewportConfig[];
 }
 
 export interface PlaywrightScenarioConfig {
@@ -185,6 +265,13 @@ export interface PlaywrightScenarioConfig {
   axeOptions?: Record<string, unknown>;
   probes?: RuntimeProbeConfig;
   screenshotOnFinding?: boolean;
+  colorScheme?: 'light' | 'dark';
+  viewport?: ViewportConfig;
+  reducedMotion?: 'reduce' | 'no-preference';
+  forcedColors?: 'active' | 'none';
+  /** Expected HTTP status (default: any status below 400). A route returning something else is an executionError. */
+  expectStatus?: number | number[];
+  settle?: false | SettleConfig;
 }
 
 export interface ManagedWebServerConfig {
@@ -216,6 +303,12 @@ export interface PlaywrightAxeAdapterConfig extends AdapterBase {
   axeOptions?: Record<string, unknown>;
   probes?: RuntimeProbeConfig;
   screenshotOnFinding?: boolean;
+  /** Expand every scenario across color schemes and viewports. */
+  matrix?: ScenarioMatrixConfig;
+  /** Scenarios audited in parallel (default: min(4, CPUs - 1)). Use 1 to run them one at a time. */
+  concurrency?: number;
+  /** Wait for load, fonts, a scroll pass, and finite animations before auditing (default on). `false` disables. */
+  settle?: false | SettleConfig;
 }
 
 export type AdapterConfig =
@@ -228,11 +321,12 @@ export type AdapterConfig =
 
 export interface ConsoleReporterConfig {
   type: 'console';
-  options?: Record<string, unknown>;
+  /** style: 'agent' (default, grouped and token-lean) or 'verbose' (per-finding listing). */
+  options?: { style?: 'agent' | 'verbose' } & Record<string, unknown>;
 }
 
 export interface FileReporterConfig {
-  type: 'json' | 'sarif' | 'junit' | 'html' | 'markdown' | 'results' | 'dashboard';
+  type: 'json' | 'sarif' | 'junit' | 'html' | 'markdown' | 'results' | 'dashboard' | 'agent';
   file: string;
   options?: Record<string, unknown>;
 }
@@ -331,6 +425,9 @@ export interface AccessibilityRun {
   summary: AccessibilitySummary;
   scorecard: AccessibilityScorecard;
   gate: GateResult;
+  baseline?: BaselineSummary;
+  /** Comparison with the previous latest.json: counts of new, fixed, and unchanged findings. */
+  sinceLastRun?: { new: number; fixed: number; unchanged: number; previousRunId?: string };
   metadata: Record<string, unknown>;
   reportFiles: string[];
   resultsUrl?: string;
@@ -419,7 +516,25 @@ export function formatResultsOpenLine(url: string): string;
 export function formatDashboardOpenLine(url: string): string;
 export function shouldServeResults(options?: { serve?: boolean; noServe?: boolean; env?: Record<string, string | undefined> }): boolean;
 export function shouldServeDashboard(options?: { serve?: boolean; noServe?: boolean; env?: Record<string, string | undefined> }): boolean;
-export function applyRunOverrides(config: NormalizedToolkitConfig, overlays?: { baseUrl?: string; routes?: string | string[] }): NormalizedToolkitConfig;
+export function applyRunOverrides(config: NormalizedToolkitConfig, overlays?: { baseUrl?: string; routes?: string | string[]; colorSchemes?: string | string[]; viewports?: string | string[] }): NormalizedToolkitConfig;
+export function firstBaseUrl(config: { adapters?: Array<{ type: string; baseURL?: string }> }): string | null;
+export function createBaseline(run: AccessibilityRun, now?: Date): BaselineDocument;
+export function readPreviousRun(file: string): Promise<AccessibilityRun | null>;
+export function compareWithPrevious(findings: Finding[], previous: AccessibilityRun | null, projectName?: string): { previousRunId?: string; new: number; fixed: number; unchanged: number } | null;
+export function renderAgentReport(run: AccessibilityRun, options?: { maxGroups?: number; maxElements?: number; maxRoutes?: number }): string;
+export function agentSummary(run: AccessibilityRun, options?: { maxGroups?: number; maxElements?: number; maxRoutes?: number }): Record<string, unknown>;
+export function groupDetail(run: AccessibilityRun, groupId: string): Record<string, unknown>;
+export function groupFindings(run: AccessibilityRun): { groups: Array<Record<string, unknown>>; routeCount: number; variantCount: number; measuredPasses: number; totals: { findings: number; groups: number } };
+export function readBaseline(file: string): Promise<BaselineDocument>;
+export function writeBaseline(file: string, baseline: BaselineDocument): Promise<void>;
+export function applyBaseline(findings: Finding[], baseline: BaselineDocument, file: string): BaselineSummary;
+export function baselineKey(finding: Pick<Finding, 'ruleId' | 'title' | 'target'>): string;
+export function routesFromSitemap(options: { baseUrl: string; source?: string; limit?: number; fetchImpl?: typeof fetch }): Promise<{ routes: string[]; source: string; truncated: boolean; skippedCrossOrigin: number }>;
+export function expandScenarioMatrix<T extends { name: string }>(scenarios: T[], matrix?: ScenarioMatrixConfig): T[];
+export const VIEWPORT_PRESETS: Readonly<Record<ViewportPreset, { width: number; height: number }>>;
+export function contrastRatio(a: ArrayLike<number>, b: ArrayLike<number>): number;
+export function requiredRatio(input: { sizePx: number; weight?: string | number; level?: 'AA' | 'AAA' }): number;
+export function suggestForeground(foreground: ArrayLike<number>, background: ArrayLike<number>, need: number): { color: string; ratio: number } | null;
 export function configUsesPlaywright(config: { adapters?: Array<{ type: string }> }): boolean;
 export function diagnoseEnvironment(options?: {
   config?: NormalizedToolkitConfig | { adapters?: Array<{ type: string; id?: string; command?: string; required?: boolean; allowEmpty?: boolean }> };

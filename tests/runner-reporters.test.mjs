@@ -198,7 +198,7 @@ test('console reporter renders every gate class, evidence location, suppression,
   const blocking = renderConsoleReport({
     ...base,
     gate: { passed: false, reason: 'blockingFindings', exitCode: 1 }
-  }, { color: false });
+  }, { color: false, style: 'verbose' });
   assert.match(blocking, /FAIL \(exit 1, blocking findings\)/);
   assert.match(blocking, /src\/App\.svelte:10:4 \(#save\)/);
   assert.match(blocking, /Description with spacing/);
@@ -206,19 +206,20 @@ test('console reporter renders every gate class, evidence location, suppression,
   assert.match(blocking, /1 finding\(s\) suppressed/);
   assert.match(blocking, /Reports: wcag-audit\/run\.json/);
 
-  const unresolved = renderConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: false, reason: 'unresolvedEvidence', exitCode: 3 } }, { color: false });
+  const unresolved = renderConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: false, reason: 'unresolvedEvidence', exitCode: 3 } }, { color: false, style: 'verbose' });
   assert.match(unresolved, /UNRESOLVED \(exit 3\)/);
   assert.match(unresolved, /No active failed/);
 
-  const execution = renderConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: false, reason: 'executionError', exitCode: 2 } }, { color: false });
+  const execution = renderConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: false, reason: 'executionError', exitCode: 2 } }, { color: false, style: 'verbose' });
   assert.match(execution, /ERROR \(exit 2, executionError\)/);
 
-  const passing = renderConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: true, reason: 'passed', exitCode: 0 } }, { color: true });
+  const passing = renderConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: true, reason: 'passed', exitCode: 0 } }, { color: true, style: 'verbose' });
   assert.match(passing, /\u001b\[32mPASS\u001b\[0m/);
 
   let captured = '';
   const result = writeConsoleReport({ ...base, findings: [], summary: { total: 0 }, gate: { passed: true, reason: 'passed', exitCode: 0 } }, {
     color: false,
+    style: 'verbose',
     stream: { write(value) { captured += value; } }
   });
   assert.equal(result, null);
@@ -255,7 +256,7 @@ test('console reporter points at results.html files', () => {
     },
     findings: [],
     gate: { passed: true, reason: 'passed', exitCode: 0 }
-  }, { color: false });
+  }, { color: false, style: 'verbose' });
   assert.match(output, /Results file: wcag-audit\/results\.html/);
   assert.match(output, /wcagate serve/);
   assert.match(output, /not a conformance score/);

@@ -10,4 +10,4 @@ node /path/to/WCAGate/bin/wcagate.mjs doctor
 node /path/to/WCAGate/bin/wcagate.mjs run
 ```
 
-Tell the user the gate and findings. Optional HTML view: `npx wcagate serve` → `http://127.0.0.1:4179/results.html`.
+Tell the user the gate and findings. Optional HTML view: `pnpm exec wcagate serve` → `http://127.0.0.1:4179/results.html`.

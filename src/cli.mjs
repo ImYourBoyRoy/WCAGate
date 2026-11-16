@@ -10,12 +10,16 @@ import path from 'node:path';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { EXIT_CODES, TOOLKIT_NAME, TOOLKIT_VERSION } from './core/constants.mjs';
-import { applyRunOverrides, configUsesPlaywright } from './core/run-overrides.mjs';
+import { applyRunOverrides, configUsesPlaywright, firstBaseUrl } from './core/run-overrides.mjs';
+import { createBaseline, readBaseline, readPreviousRun, writeBaseline } from './core/baseline.mjs';
+import { agentSummary, groupDetail, renderAgentReport } from './reporters/agent.mjs';
+import { routesFromSitemap } from './core/sitemap.mjs';
 import { diagnoseEnvironment, formatDoctorReport } from './core/doctor.mjs';
 import { findConfig, loadConfig, writeStarterFiles } from './core/config.mjs';
 import { findBuiltinRule, getBuiltinRules } from './core/rules.mjs';
 import { runAccessibility } from './core/runner.mjs';
 import { ensurePlaywrightReady } from './core/prepare.mjs';
+import { detectPackageManager } from './core/package-manager.mjs';
 import { CONSUMER_NPM_SCRIPTS, INIT_PRESETS } from './core/presets.mjs';
 import {
   DEFAULT_RESULTS_PORT,
@@ -38,6 +42,8 @@ export async function main(argv = process.argv.slice(2), io = defaultIo()) {
         return await initCommand(parsed, io);
       case 'serve':
         return await serveCommand(parsed, io);
+      case 'report':
+        return await reportCommand(parsed, io);
       case 'prepare':
         return await prepareCommand(parsed, io);
       case 'doctor':
@@ -80,10 +86,29 @@ async function runCommand(parsed, io) {
     : await findConfig(cwd);
   if (!configPath) throw new Error(`No wcagate.config.mjs, wcagate.config.js, or wcagate.config.json found from ${cwd}`);
   const config = await loadConfig(configPath, { cwd });
+  let routes = parsed.options.routes;
+  if (parsed.options.sitemap !== undefined) {
+    if (routes !== undefined) throw new Error('Use either --routes or --sitemap, not both');
+    const baseUrl = parsed.options['base-url'] ?? firstBaseUrl(config);
+    if (!baseUrl) throw new Error('--sitemap needs --base-url or a playwright-axe adapter with baseURL');
+    const found = await routesFromSitemap({
+      baseUrl,
+      source: parsed.options.sitemap === true ? undefined : String(parsed.options.sitemap),
+      limit: Number.parseInt(String(parsed.options['max-routes'] ?? 50), 10)
+    });
+    routes = found.routes;
+    if (!parsed.options.quiet) {
+      io.stdout.write(`Sitemap ${found.source}: auditing ${found.routes.length} route(s)${found.truncated ? ' (truncated; raise --max-routes)' : ''}\n`);
+    }
+  }
   applyRunOverrides(config, {
     baseUrl: parsed.options['base-url'],
-    routes: parsed.options.routes
+    routes,
+    colorSchemes: parsed.options['color-schemes'],
+    viewports: parsed.options.viewports
   });
+  const baselineFile = parsed.options.baseline ? path.resolve(cwd, parsed.options.baseline) : null;
+  const baseline = baselineFile ? { file: parsed.options.baseline, document: await readBaseline(baselineFile) } : undefined;
 
   const needsPlaywright = configUsesPlaywright(config);
   const skipPlaywright = Boolean(parsed.options['skip-playwright-install']);
@@ -100,10 +125,20 @@ async function runCommand(parsed, io) {
 
   const run = await runAccessibility(config, {
     configIsNormalized: true,
+    baseline,
+    previous: parsed.options['no-compare'] ? undefined : await readPreviousRun(path.join(config.outputDirectory, jsonReportName(config))),
+    consoleStyle: parsed.options.verbose ? 'verbose' : undefined,
     quiet: parsed.options.quiet,
     color: parsed.options.color,
     stream: io.stdout
   });
+
+  if (parsed.options['write-baseline']) {
+    const target = path.resolve(cwd, parsed.options['write-baseline']);
+    const document = createBaseline(run);
+    await writeBaseline(target, document);
+    if (!parsed.options.quiet) io.stdout.write(`Baseline written: ${parsed.options['write-baseline']} (${document.entries.length} known finding(s))\n`);
+  }
 
   const shouldServe = shouldServeResults({
     serve: parsed.options.serve,
@@ -126,6 +161,35 @@ async function runCommand(parsed, io) {
   return run.gate.exitCode;
 }
 
+function jsonReportName(config) {
+  return (config.reporters ?? []).find((reporter) => reporter.type === 'json')?.file ?? 'latest.json';
+}
+
+/** Prints the grouped agent report from an existing run file; `--group gN` drills into one cause. */
+async function reportCommand(parsed, io) {
+  const cwd = path.resolve(parsed.options.cwd ?? process.cwd());
+  let file = parsed.options.file ? path.resolve(cwd, parsed.options.file) : null;
+  if (!file) {
+    const configPath = parsed.options.config ? path.resolve(cwd, parsed.options.config) : await findConfig(cwd);
+    const config = configPath ? await loadConfig(configPath, { cwd }) : null;
+    file = path.join(config?.outputDirectory ?? path.resolve(cwd, 'wcag-audit'), config ? jsonReportName(config) : 'latest.json');
+  }
+  const run = await readPreviousRun(file);
+  if (!run) throw new Error(`No readable run file at ${file}. Run \`wcagate run\` first or pass --file.`);
+  const limits = {
+    ...(parsed.options['max-groups'] ? { maxGroups: Number.parseInt(parsed.options['max-groups'], 10) } : {}),
+    ...(parsed.options['max-elements'] ? { maxElements: Number.parseInt(parsed.options['max-elements'], 10) } : {})
+  };
+  if (parsed.options.group) {
+    io.stdout.write(`${JSON.stringify(groupDetail(run, parsed.options.group), null, 1)}\n`);
+  } else if (parsed.options.json) {
+    io.stdout.write(`${JSON.stringify(agentSummary(run, limits))}\n`);
+  } else {
+    io.stdout.write(renderAgentReport(run, limits));
+  }
+  return EXIT_CODES.PASS;
+}
+
 async function initCommand(parsed, io) {
   const target = path.resolve(parsed.positionals[0] ?? parsed.options.cwd ?? process.cwd());
   const files = await writeStarterFiles(target, {
@@ -140,7 +204,8 @@ async function initCommand(parsed, io) {
     `Add package.json scripts ${Object.keys(CONSUMER_NPM_SCRIPTS).join(', ')} (see docs/CONSUMERS.md).\n`
   );
   if (preset === 'astro' || preset === 'web' || preset === 'static') {
-    io.stdout.write('Site run: npm run wcagate:doctor && npm run wcagate:audit\n');
+    const manager = detectPackageManager(target);
+    io.stdout.write(`Site run: ${manager} run wcagate:doctor && ${manager} run wcagate:audit\n`);
   }
   return EXIT_CODES.PASS;
 }
@@ -256,15 +321,21 @@ function parseArguments(argv) {
   const command = argv[0] ?? 'help';
   const options = { color: undefined };
   const positionals = [];
-  const valueFlags = new Set(['config', 'cwd', 'port', 'preset', 'profile', 'project', 'base-url', 'routes']);
+  const valueFlags = new Set(['config', 'cwd', 'port', 'preset', 'profile', 'project', 'base-url', 'routes', 'baseline', 'write-baseline', 'max-routes', 'color-schemes', 'viewports', 'file', 'group', 'max-groups', 'max-elements']);
   const booleanFlags = new Set([
     'quiet', 'force', 'serve', 'no-serve', 'open', 'ensure-playwright', 'skip-playwright-install', 'no-color', 'color', 'json'
   ]);
   for (let index = 1; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === '--config' || argument === '--cwd' || argument === '--port'
-      || argument === '--preset' || argument === '--profile' || argument === '--project'
-      || argument === '--base-url' || argument === '--routes') {
+    if (argument === '--sitemap') {
+      const value = argv[index + 1];
+      if (value && !value.startsWith('-')) {
+        options.sitemap = value;
+        index += 1;
+      } else {
+        options.sitemap = true;
+      }
+    } else if (valueFlags.has(argument.slice(2)) && argument.startsWith('--')) {
       const value = argv[index + 1];
       if (!value || value.startsWith('-')) throw new Error(`${argument} requires a value`);
       options[argument.slice(2)] = value;
@@ -285,6 +356,10 @@ function parseArguments(argv) {
       options['skip-playwright-install'] = true;
     } else if (argument === '--json') {
       options.json = true;
+    } else if (argument === '--verbose') {
+      options.verbose = true;
+    } else if (argument === '--no-compare') {
+      options['no-compare'] = true;
     } else if (argument === '--no-color') {
       options.color = false;
     } else if (argument === '--color') {
@@ -295,7 +370,6 @@ function parseArguments(argv) {
       positionals.push(argument);
     }
   }
-  void valueFlags;
   void booleanFlags;
   return { command, options, positionals };
 }
@@ -305,8 +379,9 @@ function helpText() {
 
 Usage:
   wcagate init [directory] [--force] [--preset ${INIT_PRESETS.join('|')}] [--profile wcag22-a|wcag22-aa|wcag22-aaa]
-  wcagate run [--config file] [--cwd directory] [--quiet] [--no-color] [--serve] [--no-serve] [--open] [--port 4179] [--base-url url] [--routes /,/about] [--ensure-playwright] [--skip-playwright-install]
+  wcagate run [--config file] [--cwd directory] [--quiet] [--no-color] [--serve] [--no-serve] [--open] [--port 4179] [--base-url url] [--routes /,/about | --sitemap [url|file] [--max-routes 50]] [--color-schemes light,dark] [--viewports mobile,desktop] [--baseline file] [--write-baseline file] [--verbose] [--no-compare] [--ensure-playwright] [--skip-playwright-install]
   wcagate serve [--cwd directory] [--config file] [--port 4179] [--open]
+  wcagate report [--cwd directory] [--file latest.json] [--group g3] [--json] [--max-groups 12] [--max-elements 5]
   wcagate doctor [--cwd directory] [--config file] [--json]
   wcagate prepare [--cwd directory] [--config file] [--skip-playwright-install]
   wcagate validate-config [--config file] [--cwd directory]
@@ -326,8 +401,8 @@ Exit codes:
   3  required evidence is untested or inconclusive
 
 Results:
-  Each run overwrites wcag-audit/latest.json and wcag-audit/results.html.
-  Coding models should tell the user the gate and findings from latest.json.
+  Each run overwrites wcag-audit/agent.md (grouped by root cause, token-lean), latest.json (full evidence) and results.html.
+  Coding models read the console/agent.md output, then run wcagate report --group <id> for one cause. Do not read latest.json whole.
   Optional HTML view: wcagate serve → http://127.0.0.1:4179/results.html
 `;
 }

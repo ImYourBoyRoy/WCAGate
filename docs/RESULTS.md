@@ -1,22 +1,23 @@
 # Results
 
-Each run overwrites two files:
+Each run overwrites three files:
 
-- `wcag-audit/latest.json` — machine report for coding models and CI
+- `wcag-audit/agent.md` — **what a model reads**: findings grouped by root cause, each fix stated once (see [Agent report](AGENT_REPORT.md)); the console prints the same view
+- `wcag-audit/latest.json` — full machine evidence for CI and drill-down (large; do not read it whole)
 - `wcag-audit/results.html` — optional HTML view of the same gate
 
-This is **not** a GUI application. Models should read `latest.json` (or MCP `run`) and **tell the user** the gate plus blocking/unresolved findings. Humans who want a page can run `npm run wcagate:results` (`wcagate serve`).
+This is **not** a GUI application. Models read the console output or `agent.md` (or MCP `run`) and **tell the user** the gate plus each cause. Humans who want a page can run `pnpm run wcagate:results` (`wcagate serve`).
 
 Reporter type `results` is the default. Type `dashboard` and `dashboard.html` still work as aliases.
 
 ## Coding-model flow
 
 ```bash
-npm run wcagate:doctor
-npm run wcagate:audit
+pnpm run wcagate:doctor
+pnpm run wcagate:audit
 ```
 
-If those scripts are missing: `npx wcagate doctor` then `npx wcagate run --base-url http://127.0.0.1:<preview-port> --routes /`.
+If those scripts are missing: `pnpm exec wcagate doctor` then `pnpm exec wcagate run --base-url http://127.0.0.1:<preview-port> --routes /`.
 
 Then tell the user:
 
@@ -27,7 +28,7 @@ Then tell the user:
 Do not invent a WCAG percentage or certification. Do not open `results.html` as a workspace text file (that shows source). If a human wants the page:
 
 ```bash
-npm run wcagate:results
+pnpm run wcagate:results
 ```
 
 ```text

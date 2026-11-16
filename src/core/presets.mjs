@@ -12,6 +12,7 @@ import {
   requireProfile
 } from './profile.mjs';
 import { frostGlassContrastCheck } from './frost-ui.mjs';
+import { runScriptArgs } from './package-manager.mjs';
 
 export const INIT_PRESETS = Object.freeze(['web', 'astro', 'static', 'tauri', 'native']);
 
@@ -50,6 +51,7 @@ export function normalizePreset(value) {
 function reportersBlock() {
   return `  reporters: [
     { type: 'console' },
+    { type: 'agent', file: 'agent.md' },
     { type: 'json', file: 'latest.json' },
     { type: 'results', file: 'results.html' }
   ],`;
@@ -70,7 +72,9 @@ function probesLiteral(profileId) {
   const probes = defaultProbesForProfile(profileId);
   return `{
         targetSizeEnhanced: { enabled: ${probes.targetSizeEnhanced.enabled}, minimum: 44 },
-        focusIndicatorReview: { enabled: ${probes.focusIndicatorReview.enabled}, maxTabs: 80 }
+        focusIndicatorReview: { enabled: ${probes.focusIndicatorReview.enabled}, maxTabs: 80 },
+        reflow: { enabled: ${probes.reflow.enabled} },
+        textSpacing: { enabled: ${probes.textSpacing.enabled} }
       }`;
 }
 
@@ -78,7 +82,13 @@ function runOnlyLiteral(profileId) {
   return JSON.stringify(axeRunOnlyForProfile(profileId));
 }
 
-export function starterConfigSource({ preset = 'web', profile = DEFAULT_PROFILE, projectName = 'replace-with-project-name' } = {}) {
+export function starterConfigSource({ preset = 'web', profile = DEFAULT_PROFILE, projectName = 'replace-with-project-name', packageManager = 'npm' } = {}) {
+  // npm needs `--` before script flags; pnpm, yarn and bun pass them straight through.
+  const launch = (script, extra = []) => {
+    const [command, args] = runScriptArgs(packageManager, script, extra);
+    const quote = (value) => `'${value}'`;
+    return `command: ${quote(command)},\n        args: [${args.map(quote).join(', ')}]`;
+  };
   const resolvedPreset = normalizePreset(preset) ?? 'web';
   const resolvedProfile = requireProfile(profile).id;
   const probes = probesLiteral(resolvedProfile);
@@ -136,8 +146,7 @@ ${reportersBlock()}
     {
       id: 'packaged-webview',
       type: 'command-evidence',
-      command: 'npm',
-      args: ['run', 'test:tauri-a11y-export'],
+      ${launch('test:tauri-a11y-export')},
       outputFile: 'target/a11y/tauri-evidence.json',
       timeoutMs: 180000,
       required: false
@@ -179,7 +188,8 @@ ${reportersBlock()}
         args: ['--yes', 'serve', 'dist', '-p', '4173'],
         url: 'http://127.0.0.1:4173',
         timeoutMs: 120000,
-        reuseExistingServer: true
+        autoPort: true,
+        reuseExistingServer: false
       }
     },
     {
@@ -209,19 +219,19 @@ ${reportersBlock()}
   const webServer = resolvedPreset === 'astro'
     ? `
       webServer: {
-        command: 'npm',
-        args: ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4321'],
+        ${launch('preview', ['--host', '127.0.0.1', '--port', '4321'])},
         url: '${baseURL}',
         timeoutMs: 120000,
-        reuseExistingServer: true
+        autoPort: true,
+        reuseExistingServer: false
       }`
     : `
       webServer: {
-        command: 'npm',
-        args: ['run', 'preview', '--', '--host', '127.0.0.1', '--port', '4173'],
+        ${launch('preview', ['--host', '127.0.0.1', '--port', '4173'])},
         url: '${baseURL}',
         timeoutMs: 120000,
-        reuseExistingServer: true
+        autoPort: true,
+        reuseExistingServer: false
       }`;
 
   return `export default {

@@ -45,7 +45,8 @@ const packageJson = JSON.parse(await fs.readFile(path.join(root, 'package.json')
 const constants = await fs.readFile(path.join(root, 'src/core/constants.mjs'), 'utf8');
 assert.doesNotMatch(constants, /TOOLKIT_VERSION = '/, 'TOOLKIT_VERSION must be read from package.json, not hardcoded');
 const cliStat = await fs.stat(path.join(root, 'src/cli.mjs'));
-if ((cliStat.mode & 0o111) === 0) errors.push('src/cli.mjs: executable bit is not set');
+// Windows filesystems have no POSIX execute bit; the Linux and macOS CI legs still enforce it.
+if (process.platform !== 'win32' && (cliStat.mode & 0o111) === 0) errors.push('src/cli.mjs: executable bit is not set');
 
 for (const directory of ['src', 'scripts', 'tests']) {
   for (const file of files.filter((candidate) => candidate.startsWith(path.join(root, directory)))) {

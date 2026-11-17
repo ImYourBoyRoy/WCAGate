@@ -22,7 +22,8 @@ test('package skills exist locally and link only into the consumer project', asy
     assert.equal((await fs.lstat(cursorLink)).isSymbolicLink(), true);
     assert.equal((await fs.lstat(agentsLink)).isSymbolicLink(), true);
     const linkTarget = await fs.readlink(cursorLink);
-    assert.equal(path.isAbsolute(linkTarget), false);
+    // Windows junctions are always absolute; POSIX links stay relative so a moved project keeps working.
+    if (process.platform !== 'win32') assert.equal(path.isAbsolute(linkTarget), false);
     await fs.access(path.join(cursorLink, 'SKILL.md'));
   }
 });

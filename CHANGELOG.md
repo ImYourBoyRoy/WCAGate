@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.2 — 2026-11-17
+
+### Fixed (Windows: verified on a real Windows Server 2025 guest)
+
+- `wcagate skills link` used a relative junction target on Windows; Node resolves that against the working directory, so the link never reached `SKILL.md`. Windows now links with an absolute target.
+- `listenerBelongsTo` returned unknown on Windows, so the refusal of a foreign server answering on the managed port never fired. It now follows the parent chain through CIM and treats a listener older than the managed process as foreign.
+- `lint` no longer requires a POSIX executable bit on Windows. Tests no longer hard-code `/tmp` paths, and a Windows-only test (`tests/windows-server.test.mjs`) covers `autoPort` through the `npm` shim and whole-tree stop. The complete `check` passes on Linux, macOS 26 and Windows Server 2025.
+
 ## 2.4.1 — 2026-11-17
 
 ### Fixed

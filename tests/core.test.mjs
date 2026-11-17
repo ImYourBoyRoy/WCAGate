@@ -21,11 +21,11 @@ const baseConfig = {
 test('configuration normalizes deterministic defaults', () => {
   const config = normalizeConfig(baseConfig, { cwd: '/tmp/project' });
   assert.equal(config.project.name, 'Fixture');
-  assert.equal(config.project.root, '/tmp/project');
+  assert.equal(config.project.root, path.resolve('/tmp/project'));
   assert.equal(config.adapters[0].id, 'native-evidence-1');
   assert.equal(config.adapters[0].required, true);
   assert.deepEqual(config.gate.failOnSeverities, ['critical', 'serious', 'moderate', 'minor']);
-  assert.equal(config.outputDirectory, '/tmp/project/wcag-audit');
+  assert.equal(config.outputDirectory, path.resolve('/tmp/project', 'wcag-audit'));
 });
 
 test('configuration rejects the removed document-evidence adapter', () => {
@@ -209,7 +209,7 @@ test('output file policy contains reporters inside the output directory', () => 
   assert.equal(validateRelativeOutputFile('nested/run.json'), null);
   assert.match(validateRelativeOutputFile('../run.json'), /stay inside/);
   assert.match(validateRelativeOutputFile('C:\\temp\\run.json'), /relative path/);
-  assert.equal(resolveOutputFile('/tmp/output', 'nested/run.json'), '/tmp/output/nested/run.json');
+  assert.equal(resolveOutputFile('/tmp/output', 'nested/run.json'), path.resolve('/tmp/output', 'nested', 'run.json'));
   assert.throws(() => resolveOutputFile('/tmp/output', '../../escape.json'), /stay inside/);
 });
 

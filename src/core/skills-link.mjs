@@ -45,7 +45,11 @@ function linkSkill(source, destination) {
   }
   // The OS resolves a relative link from the REAL directory of the link: on macOS os.tmpdir() (/var) is a symlink to
   // /private/var, so a target computed from the lexical path would point one level too shallow.
-  const linkTarget = path.relative(fs.realpathSync(path.dirname(destination)), fs.realpathSync(source)) || source;
+  const realSource = fs.realpathSync(source);
+  // Windows junctions are absolute by definition (Node resolves a relative junction target against the cwd, not the link).
+  const linkTarget = process.platform === 'win32'
+    ? realSource
+    : path.relative(fs.realpathSync(path.dirname(destination)), realSource) || source;
   fs.symlinkSync(linkTarget, destination, process.platform === 'win32' ? 'junction' : 'dir');
   return { ok: true, destination, source };
 }

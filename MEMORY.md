@@ -2,7 +2,7 @@
 
 ## 1. Project Snapshot
 - **Name**: WCAGate (`@imyourboyroy/wcagate`)
-- **Version**: `2.4.1` (last GitHub release `v2.4.0`)
+- **Version**: `2.4.2` (last GitHub release `v2.4.1`)
 - **Path**: `/home/v1x0r/Desktop/AI/wcag-auditor`
 - **Purpose**: Canonical accessibility evidence gate for web, Astro, Svelte, Tauri, Bevy, and Godot
 - **Split**: This repo owns the engine. Portable Web Toolkit should keep only a thin site-profile bridge (follow-up: toolkit copy is still a re-bundle as of 2.0.3)
@@ -56,7 +56,7 @@
 
 ## 7. Verified Resources & Versions
 - Node `>=24.0.0` (engines). CI matrix: **Node 24** Active LTS and **Node 26** Current (verified 2026-08-16). Operator machines often Node 26+.
-- Package version `2.4.1`
+- Package version `2.4.2`
 - TypeScript `6.0.3` (devDependency, checked 2026-08-16)
 - GitHub Actions: `actions/checkout@v7`, `actions/setup-node@v7` (checked 2026-08-16)
 

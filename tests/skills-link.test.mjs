@@ -26,3 +26,16 @@ test('package skills exist locally and link only into the consumer project', asy
     await fs.access(path.join(cursorLink, 'SKILL.md'));
   }
 });
+
+test('links resolve when the project lives under a symlinked directory (macOS /var -> /private/var)', async () => {
+  const base = await fs.mkdtemp(path.join(os.tmpdir(), 'wcag-skills-symlink-'));
+  const real = path.join(base, 'deep', 'er', 'real');
+  await fs.mkdir(real, { recursive: true });
+  const alias = path.join(base, 'alias');
+  await fs.symlink(real, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  linkSkillsIntoProject({ projectRoot: alias, packageRoot });
+  for (const name of listPackageSkills(packageRoot)) {
+    await fs.access(path.join(alias, '.cursor', 'skills', name, 'SKILL.md'));
+    await fs.access(path.join(real, '.agents', 'skills', name, 'SKILL.md'));
+  }
+});

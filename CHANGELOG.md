@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.4.1 — 2026-11-17
+
+### Fixed
+
+- `wcagate skills link` wrote the relative symlink target from the unresolved project path. When the project lives under a symlinked directory (macOS temp dirs: `/var` is `/private/var`) the link pointed one level too shallow and `SKILL.md` was not reachable. The target is now computed from real paths. Found by the first macOS CI run; regression test added.
+
 ## 2.4.0 — 2026-11-16
 
 - **Agent report: findings grouped by root cause, ~100x fewer tokens.** The console and the new `wcag-audit/agent.md` print one block per cause (contrast failures group by color pair, so one token change fixes every element) with the fix once, bounded element lists, route/variant reach, counts instead of passes, and `since last run` / `NEW` markers. A real run went from a 137,792-token `latest.json` to 1,182 tokens. New `wcagate report [--group gN] [--json]` re-prints it or drills into one cause; `--verbose` keeps the old per-finding console. MCP `run` returns the same compact causes. axe check arrays are compacted in evidence (relatedNodes HTML dropped). See `docs/AGENT_REPORT.md`.

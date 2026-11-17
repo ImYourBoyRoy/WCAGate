@@ -1,6 +1,6 @@
 {
   "name": "@imyourboyroy/wcagate",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Fail-closed WCAG 2.2 accessibility evidence gate for websites, Svelte, Tauri, Bevy, and Godot.",
   "type": "module",
   "bin": {
